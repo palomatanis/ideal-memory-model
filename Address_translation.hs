@@ -3,7 +3,7 @@ module Address_translation where
 import System.Random
 import Data.List
 
------ Memory parameters
+----- Address parameters
 
 -- Number of bits of the virtual address
 virtualAddressLength :: Int
@@ -30,16 +30,21 @@ setBits :: Int
 setBits = 5
 
 -- Associativity (number of blocks per cache)
+associativity :: Int 
 associativity = 4
 
 
 data Address = Address [Int]
 
----- Creating addresses
+---- Creating and printing addresses
 
 showAddress :: Address -> [Int]
 showAddress (Address a) = a
 
+-- List of addresses as strings in lines
+toStringAddresses :: [Address] -> String
+toStringAddresses a = unlines $ map show $ map showAddress a
+  
 -- Only to be used with valid addresses 
 createAddress :: [Int] -> Address
 createAddress address = Address address
@@ -48,6 +53,8 @@ createAddress address = Address address
 createRandom_Address :: (Int, Int) -> Address
 createRandom_Address (seed, numberBits) = Address (take numberBits $ randomRs (0, 1) (mkStdGen seed))
 
+
+-----
 
 -- From a virtual address, create a physical address with same offset and the rest random bits
 createRandom_PhysicalFromVirtual :: (Address, Int) -> Address

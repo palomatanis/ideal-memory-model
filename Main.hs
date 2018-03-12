@@ -6,7 +6,7 @@ import Address_translation
 
 numberAddrToTest :: Int
 numberAddrToTest = 100
-
+  
 
 
 -- main = do randomList <- listOfRandomAddr numberAddrToTest
@@ -14,10 +14,10 @@ numberAddrToTest = 100
 
 main = do
   p <- listOfRandomAddr numberAddrToTest
-  listR <- generateSeeds numberAddrToTest
-  putStrLn $ show $ map showAddress $ map createRandom_PhysicalFromVirtual $ zip p listR
+  putStr $ toStringAddresses p
 
 
+-- Creates random list of virtual addresses, transforms to phyisical, says how many sets have 'associativity' addresses
 printEvictions = do
   p <- listOfRandomAddr numberAddrToTest
   listR <- generateSeeds numberAddrToTest
