@@ -2,30 +2,57 @@ module Main where
 
 import System.Random
 import Address_translation
+import Control.Monad
 
+
+-- media de 1000 repeticiones
+-- entre 0 y 4000 direcciones. intervalo asociatividad
+numberAddrToTest_From :: Int
+numberAddrToTest_From = 0
+
+numberAddrToTest_To :: Int
+numberAddrToTest_To = 400
 
 numberAddrToTest :: Int
-numberAddrToTest = 100
-  
+numberAddrToTest = 400
 
-
--- main = do randomList <- listOfRandomAddr numberAddrToTest
---           putStrLn $ checkEvictionSet $ separateAdressesIntoBins $ map (createRandom_PhysicalFromVirtual) randomList
+iterations :: Int
+iterations = 10
 
 main = do
-  p <- listOfRandomAddr numberAddrToTest
-  putStr $ toStringAddresses p
+  p <- mapM test_n [numberAddrToTest_From, (numberAddrToTest_From + associativity)..numberAddrToTest_To]
+  putStrLn $ show p
+
+  
+-- Mean of eviction sets for n addresses
+test_n :: Int -> IO(Float)  
+test_n n = do
+  p <- replicateM iterations (count_evictions n)
+  return (mean p)
+
+-- Mean of a list
+mean :: [Int] -> Float
+mean l = (fromIntegral $ sum l)/(fromIntegral $ length l)
+          
+-- Creates random list of addresses, and counts eviction sets  
+count_evictions :: Int -> IO(Int)
+count_evictions number = do
+  p <- listOfRandomAddr number
+  return (number_of_eviction_sets $ separateAdressesIntoBins p)
+  -- putStr $ toStringAddresses p
 
 
 -- Creates random list of virtual addresses, transforms to phyisical, says how many sets have 'associativity' addresses
-printEvictions = do
+calculate_evictions :: IO()
+calculate_evictions = do
   p <- listOfRandomAddr numberAddrToTest
   listR <- generateSeeds numberAddrToTest
-  putStrLn $ evictions $ map createRandom_PhysicalFromVirtual $ zip p listR
+  putStrLn $ print_evictions $ map virtual_to_physical_translation $ zip p listR
+
 
 -- Given a set of addresses, prints info on eviction sets
-evictions :: [Address] -> String
-evictions addr = "Out of " ++ (show (2^setBits)) ++ " sets, there are " ++ (show (checkEvictionSet $ separateAdressesIntoBins addr)) ++ " eviction sets"
+print_evictions :: [Address] -> String
+print_evictions addr = "Out of " ++ (show (2^cacheSetBits)) ++ " sets, there are " ++ (show (number_of_eviction_sets $ separateAdressesIntoBins addr)) ++ " eviction sets"
 
 
 -- create list of n random addresses (virtual)
