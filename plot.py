@@ -1,9 +1,11 @@
 import matplotlib.pyplot as plt
 import numpy as np
+import sys
 
+file_name = str(sys.argv[1])
+print(file_name)
 
-
-with open('results.txt', 'r') as f:
+with open(file_name, 'r') as f:
     for line in f:
     # myList = [line.replace('"', '').strip() for line in f]
         myList = list(map(float, line.replace('"', '').strip().split()))
