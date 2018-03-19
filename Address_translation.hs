@@ -13,7 +13,7 @@ physicalAddressLength = 34
 
 -- Bits of offset, between 0 and addressLength
 pageOffset :: Int
-pageOffset = 21
+pageOffset = 12
 
 ----- Cache parameters
 
@@ -23,15 +23,24 @@ cacheOffset = 6
 
 -- Number of bits for set (s bits for 2^s sets)
 cacheSet :: Int
-cacheSet = 7
+cacheSet = 13
 
 -- Associativity (number of blocks per cache set)
 associativity :: Int 
 associativity = 12
 
+
+------ TLB
+
+-- bits
+tlb_size :: Int
+tlb_size = 1536
+-- tlb_size = 10
+
+
+--------------------------------------------------------------------------------------------------------------
 data Address = Address [Int]
 
----- Creating and printing addresses
 showAddress :: Address -> [Int]
 showAddress (Address a) = a
 
@@ -42,6 +51,11 @@ toStringAddresses = unlines . map show . map showAddress
 -- Only to be used with valid [Int] 
 createAddress :: [Int] -> Address
 createAddress = Address
+
+ -- With a seed
+createRandom_Address :: Int -> Int -> Address
+createRandom_Address seed numberBits = Address (take numberBits $ randomRs (0, 1) (mkStdGen seed))
+
 
 -----
 

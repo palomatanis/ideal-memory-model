@@ -1,18 +1,16 @@
 import matplotlib.pyplot as plt
 import numpy as np
 
-#file = open('results.txt','r')
-tests = np.genfromtxt('results2.txt', delimiter=',', skip_header=0, names=['lista'])
-#tests = file.readlines()
-#file.close()
-print(tests)
-# print (tests)
-rang = np.arange(0, 4000, 24).tolist()
-print(len(rang))
-plt.plot(rang, tests['lista'])
-plt.grid()
 
-###plt.plot(tests)
+
+with open('results.txt', 'r') as f:
+    for line in f:
+    # myList = [line.replace('"', '').strip() for line in f]
+        myList = list(map(float, line.replace('"', '').strip().split()))
+
+rang = np.arange(0, 4000, 24).tolist()
+plt.plot(rang, myList)
+plt.grid()
 plt.ylabel('some numbers')
 plt.show()
 
