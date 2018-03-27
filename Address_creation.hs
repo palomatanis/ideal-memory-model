@@ -7,20 +7,20 @@ import System.Random
 import System.Random.Shuffle
 
 -- create list of n [0...0] addresses of length nbits (virtual)
-list_of_addresses_offset_zero :: Int -> Int -> [Address]
+list_of_addresses_offset_zero :: Int -> Int -> [VAddress]
 list_of_addresses_offset_zero _ 0 = []
-list_of_addresses_offset_zero nbits n = (create_address $ take nbits [0,0..0]):list_of_addresses_offset_zero nbits (n-1)
+list_of_addresses_offset_zero nbits n = (create_v_address $ take nbits [0,0..0]):list_of_addresses_offset_zero nbits (n-1)
 
   
 -- Generates list of n addesses with the same offset [0...0] in a range of 2^range addresses, each from a different page
 -- Range a in bits
-list_semi_random_addresses :: Int -> Int -> IO ([Address])
+list_semi_random_addresses :: Int -> Int -> IO ([VAddress])
 list_semi_random_addresses n range = do
   s <- randomIO :: IO(Int)
   let start = take (virtual_address_length - pageOffset) $ randomRs (0, 1) (mkStdGen s)
   let fixed_bits = take number_fixed_bits start
   p <- n_different_pages number_variable_bits n
-  return (map create_address $ map (\x -> fixed_bits ++ x ++ offset) p)
+  return (map create_v_address $ map (\x -> fixed_bits ++ x ++ offset) p)
   where
     number_fixed_bits = virtual_address_length - range
     number_variable_bits = range - pageOffset
@@ -56,19 +56,25 @@ n_different_pages n_bits len = do
 
 
 -- create list of n random addresses of length len (virtual)
-list_of_random_addresses :: Int -> Int-> IO ([Address])
+list_of_random_addresses :: Int -> Int-> IO ([VAddress])
 list_of_random_addresses _ 0 = return []
 list_of_random_addresses nbits n = do
-  r <- random_address nbits
+  r <- random_v_address nbits
   rs <- list_of_random_addresses nbits (n-1)
   return (r:rs)
   
 
 -- Create random address of length n
-random_address :: Int -> IO (Address)
-random_address nbits = do
+random_v_address :: Int -> IO (VAddress)
+random_v_address nbits = do
   newRand <- randomIO
-  return (createRandom_Address newRand nbits)
+  return (createRandom_VAddress newRand nbits)
+
+  -- Create random address of length n
+random_p_address :: Int -> IO (PAddress)
+random_p_address nbits = do
+  newRand <- randomIO
+  return (createRandom_PAddress newRand nbits)
 
 
 -- Generates a list of n seeds

@@ -41,7 +41,7 @@ possible_addresses = 2 ^ (virtual_address_length - pageOffset - (virtual_address
 
 -- Save tests
 main = do
-    m <- test_complete test_reduction_alternative
+    m <- test_complete test_reduction
     appendFile "resultsReduction_alt.txt" ((list_to_string m) ++ "\n")
     -- writeFile "resultsTest.txt" ((list_to_string m) ++ "\n")
     where list_to_string = unwords . map show
@@ -95,28 +95,18 @@ test_binary number = do
   listR <- generate_seeds number
   r <- list_semi_random_addresses number memoryRange
   let offset = take pageOffset [0,0..0]
-  a <- random_address $ physical_address_length - pageOffset
-  let victim = create_address $ (showAddress a) ++ offset
+  a <- random_p_address $ physical_address_length - pageOffset
+  let victim = create_p_address $ (showPAddress a) ++ offset
   return (is_address_in_eviction_set victim $ map virtual_to_physical_translation $ zip r listR)
 
 
 test_reduction :: Int -> IO (Int)
 test_reduction number = do
-  listR <- generate_seeds number
-  r <- list_semi_random_addresses number memoryRange
-  let offset = take pageOffset [0,0..0]
-  a <- random_address $ physical_address_length - pageOffset
-  let victim = create_address $ (showAddress a) ++ offset
-  return (reduction victim $ map virtual_to_physical_translation $ zip r listR)  
-
-
-test_reduction_alternative :: Int -> IO (Int)
-test_reduction_alternative number = do
   let free_cache_bits = cacheOffset + cacheSet - pageOffset
   let free_cache = 2 ^ free_cache_bits
   r <- replicateM number $ randomRIO(0, free_cache - 1)
   v <- randomRIO(0, free_cache - 1)
-  return (reduction_alt v r)
+  return (reduction v r)
 
 
 
