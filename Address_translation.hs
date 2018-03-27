@@ -127,6 +127,7 @@ reduction victim initial_set =
     aux = (take n_cei $ repeat cei) ++ (take n_trun $ repeat trun)
     groups = splitPlaces aux initial_set
     combinations = map (\x -> initial_set \\ x) groups
+    take_one vic = find (\x -> (is_address_in_eviction_set vic x) == 1)    
 
 
 reduction_alt :: Int -> [Int] -> Int
@@ -147,30 +148,21 @@ reduction_alt v sets =
     groups = splitPlaces aux sets
     combinations = map concat $ map (\x -> deleteN x groups) [0..((length groups) - 1)]
     is_eviction subs = if ((length $ filter (== v) subs) >= associativity) then True else False
-        
+    
 
+-- Delete nth element of a list
 deleteN :: Int -> [a] -> [a]
 deleteN _ []     = []
 deleteN i (a:as)
    | i == 0    = as
    | otherwise = a : deleteN (i-1) as
-   
--- delete_nth :: Int -> [a] -> [a]
--- delete_nth n [] = []
--- delete_nth n lst =
---   let (ys,zs) = splitAt n lst in
---     ys ++ (tail zs)
-
-
-take_one :: Address -> [[Address]] -> Maybe [Address]
-take_one vic = find (\x -> (is_address_in_eviction_set vic x) == 1)
 
 
 -- Create set combinations
 bins :: Int -> [[Int]]
 bins n_bins = take (2^n_bins) $ filter((== n_bins) . length) $ concat $ iterate ((:) <$> [0, 1] <*>) [[]]
 
-
+-- Count number of addresses in eviction sets
 number_of_eviction_addresses :: [Address] -> Int
 number_of_eviction_addresses = sum . filter (> associativity) . separate_addresses_into_bins
 
