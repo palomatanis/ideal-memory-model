@@ -26,6 +26,13 @@ cacheOffset = 6
 -- Number of bits for set (s bits for 2^s sets)
 cacheSet :: Int
 cacheSet = 13
+
+-- Actual number of cache bits that can change
+free_cache_bits :: Int
+free_cache_bits = cacheOffset + cacheSet - pageOffset
+
+free_cache :: Int
+free_cache = 2^free_cache_bits
   
 -- associativity (number of blocks per cache set)
 associativity :: Int 
@@ -43,10 +50,11 @@ tlb_bits :: Int
 tlb_bits = 4
 
 --------------------------------------------------------------------------------------------------------------
-data PAddress = PAddress [Int]
-  deriving (Read, Show, Eq)
 
 data VAddress = VAddress [Int]
+  deriving (Read, Show, Eq)
+
+data PAddress = PAddress [Int]
   deriving (Read, Show, Eq)
 
 data Set = Set Int
@@ -58,8 +66,11 @@ showVAddress (VAddress a) = a
 
 showPAddress :: PAddress -> [Int]
 showPAddress (PAddress a) = a
-
   
+show_set :: Set -> Int
+show_set (Set a) = a
+
+
 -- Only to be used with valid [Int] 
 create_v_address :: [Int] -> VAddress
 create_v_address = VAddress
@@ -68,6 +79,9 @@ create_v_address = VAddress
 create_p_address :: [Int] -> PAddress
 create_p_address = PAddress
 
+-- Only to be used with valid [Int] 
+create_set :: Int -> Set
+create_set = Set
 
  -- With a seed
 createRandom_VAddress :: Int -> Int -> VAddress
@@ -76,7 +90,6 @@ createRandom_VAddress seed numberBits = VAddress (take numberBits $ randomRs (0,
 -- With a seed
 createRandom_PAddress :: Int -> Int -> PAddress
 createRandom_PAddress seed numberBits = PAddress (take numberBits $ randomRs (0, 1) (mkStdGen seed))
-
 
 ----- Address translation
 
@@ -90,50 +103,39 @@ virtual_to_physical_translation (virtual, seed) = PAddress ((take (numberOfRando
 ---- Binary test
 
 -- Returns 1 if victim address is in eviction set, otherwise 0
-is_address_in_eviction_set :: PAddress -> [PAddress] -> Int
-is_address_in_eviction_set victim set =
-  if (length $ filter (== victims_set) $ get_sets_from_addresses set) >= associativity
-  then 1
-  else 0
-  where victims_set = get_set_from_single_address victim
-        
----- Polynomial test
+is_address_in_eviction_set :: Set -> [Set] -> Bool
+is_address_in_eviction_set victim set = (length $ filter (== victim) set) >= associativity
 
-exists_eviction :: [PAddress] -> Int
-exists_eviction add =
-  if (number_of_eviction_sets add) > 0
-  then 1
-  else 0
-
--- Returns number of caches with associativity number of addresses
-number_of_eviction_sets :: [PAddress] -> Int
-number_of_eviction_sets = length . filter (> associativity) . separate_addresses_into_bins
+                                        
+-- Is there at least one eviction set
+exists_eviction :: [Set] -> Bool
+exists_eviction add = (number_of_eviction_sets add) > 0
 
 
--- Takes list of addresses and outputs the histogram of sets(as a list) -> [3, 4, 4, 1] means there were 3 "00", 4 "01", 4 "10", 4 "11"
-separate_addresses_into_bins :: [PAddress] -> [Int]
-separate_addresses_into_bins sets = map (\x -> (length $ filter (==x) $ get_sets_from_addresses sets)) $ bins cacheSet
--- separate_addresses_into_bins :: [Address] -> [Int]
--- separate_addresses_into_bins sets = map length $ group $ sort $ get_sets_from_addresses sets
+-- Count number of addresses in eviction sets
+number_of_eviction_addresses :: [Set] -> Int
+number_of_eviction_addresses = sum . filter (> associativity) . separate_sets_into_bins
 
 
--- Takes list of addresses and outputs lists of the set part of the addresses (each part of the address is a list)
-get_sets_from_addresses :: [PAddress] -> [[Int]]
-get_sets_from_addresses = map (take cacheSet) . map (drop (physical_address_length - cacheOffset - cacheSet)) . map showPAddress
-
--- Takes list of addresses and outputs lists of the set part of the addresses (each part of the address is a list)
-get_set_from_single_address :: PAddress -> [Int]
-get_set_from_single_address = take cacheSet . drop (physical_address_length - cacheOffset - cacheSet) . showPAddress
+-- Returns number of eviction sets for a list of sets
+number_of_eviction_sets :: [Set] -> Int
+number_of_eviction_sets = length . filter (> associativity) . separate_sets_into_bins
 
 
-reduction :: Int -> [Int] -> Int
+-- Takes list of sets and outputs the histogram
+separate_sets_into_bins :: [Set] -> [Int]
+separate_sets_into_bins sets = map (\x -> (length $ filter (==x) $ map show_set sets)) $ [0..(free_cache - 1)]
+
+
+-- Is True when reduction is succesful given a victim set and number of sets
+reduction :: Set -> [Set] -> Bool
 reduction v sets =
   if (number_addreses == associativity) && (is_eviction sets)
-  then 1
+  then True
   else
     case (find is_eviction combinations) of
       Just new_set -> reduction v new_set
-      Nothing -> 0
+      Nothing -> False
   where
     number_addreses = length sets
     cei = ceiling $ (fromIntegral number_addreses) / (fromIntegral $ associativity + 1)
@@ -144,23 +146,7 @@ reduction v sets =
     groups = splitPlaces aux sets
     combinations = map concat $ map (\x -> deleteN x groups) [0..((length groups) - 1)]
     is_eviction subs = if ((length $ filter (== v) subs) >= associativity) then True else False
-    
 
--- Delete nth element of a list
-deleteN :: Int -> [a] -> [a]
-deleteN _ []     = []
-deleteN i (a:as)
-   | i == 0    = as
-   | otherwise = a : deleteN (i-1) as
-
-
--- Create n_bins combinations
-bins :: Int -> [[Int]]
-bins n_bins = take (2^n_bins) $ filter((== n_bins) . length) $ concat $ iterate ((:) <$> [0, 1] <*>) [[]]
-
--- Count number of addresses in eviction sets
-number_of_eviction_addresses :: [PAddress] -> Int
-number_of_eviction_addresses = sum . filter (> associativity) . separate_addresses_into_bins
 
 ---- TLB
 tlb_misses :: [VAddress] -> Int
@@ -172,3 +158,18 @@ tlb_misses' pages = map (\x -> length $ filter (==x) pages) $ bins tlb_bits
 
 tlb_block_size :: Int
 tlb_block_size = truncate $ (fromIntegral tlb_size) / (fromIntegral $ 2^tlb_bits)
+
+
+---------------------- Aux
+
+-- Delete nth element of a list
+deleteN :: Int -> [a] -> [a]
+deleteN _ []     = []
+deleteN i (a:as)
+   | i == 0    = as
+   | otherwise = a : deleteN (i-1) as
+
+
+-- Create n_bins combinations of 0 and 1
+bins :: Int -> [[Int]]
+bins n_bins = take (2^n_bins) $ filter((== n_bins) . length) $ concat $ iterate ((:) <$> [0, 1] <*>) [[]]

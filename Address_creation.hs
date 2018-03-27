@@ -5,6 +5,16 @@ import Address_translation
 
 import System.Random
 import System.Random.Shuffle
+import Control.Monad
+
+
+list_random_sets :: Int -> IO ([Set])
+list_random_sets number = replicateM number random_set
+
+random_set :: IO (Set)
+random_set = do
+  r <- randomRIO(0, free_cache - 1)
+  return (create_set r)
 
 -- create list of n [0...0] addresses of length nbits (virtual)
 list_of_addresses_offset_zero :: Int -> Int -> [VAddress]
@@ -31,29 +41,6 @@ n_different_pages :: Int -> Int -> IO ([[Int]])
 n_different_pages n_bits len = do
   p <- shuffleM $ bins n_bits
   return (take len p)
-   
--- -- Takes a number of bits, and the length  and returns a list of random, not repeated [Int]
--- n_different_pages2 :: Int -> Int -> IO ([[Int]])
--- n_different_pages2 n_bits len = n_different_pages2' n_bits len []
---   -- if ((2^n_bits) < len)
---   --   then do
---   --      p <- list_of_addresses_offset_zero n_bits len
---   --      return (map showAddress p)
---   --   else do
---   --      (return (n_different_pages' n_bits len []))
-  
--- n_different_pages2' :: Int -> Int -> [[Int]] -> IO ([[Int]])
--- n_different_pages2' n_bits len original_list = do
---   let actual_list = nub original_list
---   let length_difference = len - (length actual_list)
---   if (length_difference == 0)
---     then return actual_list
---     else do
---        l <- list_of_random_addresses n_bits length_difference
---        let new_list = nub $ map showAddress l
---        r <- n_different_pages2' n_bits len (actual_list ++ new_list)
---        return r
-
 
 -- create list of n random addresses of length len (virtual)
 list_of_random_addresses :: Int -> Int-> IO ([VAddress])

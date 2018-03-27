@@ -25,24 +25,14 @@ iterations = 100
 memoryRange :: Int
 memoryRange = 24
 
-possible_addresses :: Int
-possible_addresses = 2 ^ (virtual_address_length - pageOffset - (virtual_address_length - memoryRange))
-
-
--- printing = do
---   p <- list_semi_random_addresses 4000 memoryRange
---   putStrLn $ show $ exists_eviction p
---   --putStrLn $ to_string_addresses p
-
--- printing2 = do
---   p <- test_reduction_alternative 4000
---   putStrLn $ show p
+possible_different_addresses :: Int
+possible_different_addresses = 2^(virtual_address_length - pageOffset - (virtual_address_length - memoryRange))
 
 
 -- Save tests
 main = do
     m <- test_complete test_reduction
-    appendFile "resultsReduction_alt.txt" ((list_to_string m) ++ "\n")
+    appendFile "results/sets/resultsEvictions.txt" ((list_to_string m) ++ "\n")
     -- writeFile "resultsTest.txt" ((list_to_string m) ++ "\n")
     where list_to_string = unwords . map show
 
@@ -57,59 +47,49 @@ do_test_of f n = do
   p <- replicateM iterations $ f n
   return (mean p)
 
-
 count_tlb_misses :: Int -> IO(Int)
 count_tlb_misses number = do
   r <- list_semi_random_addresses number memoryRange
   return(tlb_misses r)
-
     
 -- Creates list of n physical addresses from a virtual address, and counts eviction sets
 -- The list is created by choosing n addresses with the same offset and belonging to the same range but each of a different page 
-count_evictions :: Int -> IO(Int)
-count_evictions number = do
-  listR <- generate_seeds number
-  r <- list_semi_random_addresses number memoryRange
-  return (number_of_eviction_sets $ map virtual_to_physical_translation $ zip r listR)
+test_count_evictions :: Int -> IO(Int)
+test_count_evictions number = do
+  r <- list_random_sets number
+  return (number_of_eviction_sets r)
 
-
--- Creates list of n physical addresses from a virtual address, and counts addreses in eviction sets
--- The list is created by choosing n addresses with the same offset and belonging to the same range but each of a different page 
-count_evictions_addresses :: Int -> IO(Int)
-count_evictions_addresses number = do
-  listR <- generate_seeds number
-  r <- list_semi_random_addresses number memoryRange
-  return (number_of_eviction_addresses $ map virtual_to_physical_translation $ zip r listR)
+-- Creates list of n sets and counts how many addresses are in eviction sets 
+test_count_evictions_addresses :: Int -> IO(Int)
+test_count_evictions_addresses number = do
+  r <- list_random_sets number
+  return (number_of_eviction_addresses r)
 
 -- Returns 1 if there is an evicton set or 0 otherwise
 test_multinomial :: Int -> IO(Int)
 test_multinomial number = do
-  listR <- generate_seeds number
-  r <- list_semi_random_addresses number memoryRange
-  return (exists_eviction $ map virtual_to_physical_translation $ zip r listR)  
+  r <- list_random_sets number
+  return (bool_to_int $ exists_eviction r)
 
-
--- Creates list of addresses, and a random victim address, checks if it's in an eviction set
+-- Creates list of sets, and a random victim set, checks if it's in an eviction set
 test_binary :: Int -> IO(Int)
 test_binary number = do
-  listR <- generate_seeds number
-  r <- list_semi_random_addresses number memoryRange
-  let offset = take pageOffset [0,0..0]
-  a <- random_p_address $ physical_address_length - pageOffset
-  let victim = create_p_address $ (showPAddress a) ++ offset
-  return (is_address_in_eviction_set victim $ map virtual_to_physical_translation $ zip r listR)
-
+  r <- list_random_sets number
+  v <- random_set
+  return (bool_to_int $ is_address_in_eviction_set v r)
 
 test_reduction :: Int -> IO (Int)
 test_reduction number = do
-  let free_cache_bits = cacheOffset + cacheSet - pageOffset
   let free_cache = 2 ^ free_cache_bits
-  r <- replicateM number $ randomRIO(0, free_cache - 1)
-  v <- randomRIO(0, free_cache - 1)
-  return (reduction v r)
-
+  r <- list_random_sets number
+  v <- random_set
+  return (bool_to_int $ reduction v r)
 
 
 -- Mean of a list
 mean :: [Int] -> Float
 mean l = (fromIntegral $ sum l)/(fromIntegral $ length l)
+
+bool_to_int :: Bool -> Int
+bool_to_int True = 1
+bool_to_int _ = 0
