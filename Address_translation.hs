@@ -149,12 +149,11 @@ reduction v sets =
 
 
 ---- TLB
-tlb_misses :: [VAddress] -> Int
-tlb_misses = sum . map (\x -> x - tlb_block_size) . filter (> tlb_block_size) . tlb_misses' . map (take tlb_bits) . map (drop $ virtual_address_length - pageOffset - tlb_bits) . map showVAddress
+tlb_misses :: [Int] -> Int
+tlb_misses = sum . map (\x -> x - tlb_block_size) . filter (> tlb_block_size) . tlb_misses'
   
-tlb_misses' :: [[Int]] -> [Int]
-tlb_misses' pages = map (\x -> length $ filter (==x) pages) $ bins tlb_bits
-
+tlb_misses' :: [Int] -> [Int]
+tlb_misses' tlbs = map (\x -> length $ filter (== x) tlbs) [0..((2^tlb_bits) - 1)]
 
 tlb_block_size :: Int
 tlb_block_size = truncate $ (fromIntegral tlb_size) / (fromIntegral $ 2^tlb_bits)

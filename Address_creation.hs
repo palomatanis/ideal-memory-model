@@ -16,6 +16,9 @@ random_set = do
   r <- randomRIO(0, free_cache - 1)
   return (create_set r)
 
+list_random_tlb :: Int -> IO ([Int])
+list_random_tlb number = replicateM number $ randomRIO(0, ((2^tlb_bits) - 1))
+
 -- create list of n [0...0] addresses of length nbits (virtual)
 list_of_addresses_offset_zero :: Int -> Int -> [VAddress]
 list_of_addresses_offset_zero _ 0 = []

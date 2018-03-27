@@ -19,7 +19,7 @@ numberAddrToTest_To = 4000
 -- numberAddrToTest_To = 4000
 
 iterations :: Int
-iterations = 100
+iterations = 10
 -- iterations = 1000
 
 memoryRange :: Int
@@ -31,8 +31,8 @@ possible_different_addresses = 2^(virtual_address_length - pageOffset - (virtual
 
 -- Save tests
 main = do
-    m <- test_complete test_reduction
-    appendFile "results/sets/resultsEvictions.txt" ((list_to_string m) ++ "\n")
+    m <- test_complete count_tlb_misses
+    appendFile "results/sets/resultsTLB.txt" ((list_to_string m) ++ "\n")
     -- writeFile "resultsTest.txt" ((list_to_string m) ++ "\n")
     where list_to_string = unwords . map show
 
@@ -49,7 +49,7 @@ do_test_of f n = do
 
 count_tlb_misses :: Int -> IO(Int)
 count_tlb_misses number = do
-  r <- list_semi_random_addresses number memoryRange
+  r <- list_random_tlb number
   return(tlb_misses r)
     
 -- Creates list of n physical addresses from a virtual address, and counts eviction sets
