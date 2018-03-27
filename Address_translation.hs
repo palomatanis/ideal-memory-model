@@ -26,7 +26,7 @@ cacheOffset = 6
 -- Number of bits for set (s bits for 2^s sets)
 cacheSet :: Int
 cacheSet = 13
-
+  
 -- associativity (number of blocks per cache set)
 associativity :: Int 
 associativity = 12
