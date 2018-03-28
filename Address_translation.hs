@@ -130,12 +130,36 @@ separate_sets_into_bins sets = map (\x -> (length $ filter (==x) $ map show_set 
 -- Is True when reduction is succesful given a victim set and number of sets
 reduction :: Set -> [Set] -> Bool
 reduction v sets =
-  if (number_addreses == associativity) && (is_eviction sets)
+  if (number_addreses == associativity) && (is_address_in_eviction_set v sets)
   then True
   else
-    case (find is_eviction combinations) of
+    case (find (is_address_in_eviction_set v) $ reduction_combinations sets) of
       Just new_set -> reduction v new_set
       Nothing -> False
+  where
+    number_addreses = length sets
+
+
+-- Is True when reduction is succesful given a victim set and number of sets
+reduction_noisy :: Set -> [Set] -> [Set] -> Bool
+reduction_noisy v sets [] = reduction v sets
+reduction_noisy v sets tlb_list =
+  if ((number_addreses + number_tlb_addreses) == associativity) && (is_address_in_eviction_set v (sets ++ tlb_list))
+  then True
+  else
+    case (find (is_address_in_eviction_set v) $ reduction_combinations $ sets ++ tlb_list) of
+      Just new_set ->
+        let new_new_set = new_set \\ tlb_list
+            new_tlb_list = take (expected_tlb_misses $ length new_new_set) tlb_list
+        in reduction_noisy v new_new_set new_tlb_list
+      Nothing -> False
+  where
+    number_addreses = length sets
+    number_tlb_addreses = length tlb_list
+
+    
+reduction_combinations :: [Set] -> [[Set]]
+reduction_combinations sets = map concat $ map (\x -> deleteN x groups) [0..((length groups) - 1)]
   where
     number_addreses = length sets
     cei = ceiling $ (fromIntegral number_addreses) / (fromIntegral $ associativity + 1)
@@ -144,10 +168,8 @@ reduction v sets =
     n_trun = (associativity + 1) - n_cei
     aux = (take n_cei $ repeat cei) ++ (take n_trun $ repeat trun)
     groups = splitPlaces aux sets
-    combinations = map concat $ map (\x -> deleteN x groups) [0..((length groups) - 1)]
-    is_eviction subs = if ((length $ filter (== v) subs) >= associativity) then True else False
 
-
+  
 ---- TLB
 tlb_misses :: [Int] -> Int
 tlb_misses = sum . map (\x -> x - tlb_block_size) . filter (> tlb_block_size) . tlb_misses'
@@ -155,6 +177,12 @@ tlb_misses = sum . map (\x -> x - tlb_block_size) . filter (> tlb_block_size) . 
 tlb_misses' :: [Int] -> [Int]
 tlb_misses' tlbs = map (\x -> length $ filter (== x) tlbs) [0..((2^tlb_bits) - 1)]
 
+-- Expected number of misses
+expected_tlb_misses :: Int -> Int
+expected_tlb_misses n =
+  let d = n - tlb_size
+  in if d > 0 then d else 0
+  
 tlb_block_size :: Int
 tlb_block_size = truncate $ (fromIntegral tlb_size) / (fromIntegral $ 2^tlb_bits)
 
