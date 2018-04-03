@@ -51,84 +51,41 @@ tlb_bits = 2
 
 --------------------------------------------------------------------------------------------------------------
 
-data VAddress = VAddress [Int]
+data Address = Address Int
   deriving (Read, Show, Eq)
 
-data PAddress = PAddress [Int]
-  deriving (Read, Show, Eq)
-
-data Set = Set Int
-  deriving (Read, Show, Eq)
-
-
-showVAddress :: VAddress -> [Int]
-showVAddress (VAddress a) = a
-
-showPAddress :: PAddress -> [Int]
-showPAddress (PAddress a) = a
-  
-show_set :: Set -> Int
-show_set (Set a) = a
-
+show_set :: Address -> Int
+show_set (Address a) = a
 
 -- Only to be used with valid [Int] 
-create_v_address :: [Int] -> VAddress
-create_v_address = VAddress
-
--- Only to be used with valid [Int] 
-create_p_address :: [Int] -> PAddress
-create_p_address = PAddress
-
--- Only to be used with valid [Int] 
-create_set :: Int -> Set
-create_set = Set
-
- -- With a seed
-createRandom_VAddress :: Int -> Int -> VAddress
-createRandom_VAddress seed numberBits = VAddress (take numberBits $ randomRs (0, 1) (mkStdGen seed))
-
--- With a seed
-createRandom_PAddress :: Int -> Int -> PAddress
-createRandom_PAddress seed numberBits = PAddress (take numberBits $ randomRs (0, 1) (mkStdGen seed))
-
------ Address translation
-
--- From a virtual address, create a physical address with same offset and the rest random bits
-virtual_to_physical_translation :: (VAddress, Int) -> PAddress
-virtual_to_physical_translation (virtual, seed) = PAddress ((take (numberOfRandomBits) $ randomRs (0, 1) (mkStdGen seed)) ++ (drop (oldPageBits) $ showVAddress virtual))
-  where numberOfRandomBits = physical_address_length - pageOffset
-        oldPageBits = virtual_address_length - pageOffset
-
+create_set :: Int -> Address
+create_set = Address
 
 ---- Binary test
 
 -- Returns True if victim address is in eviction set
-evicts :: [Set] -> Set -> Bool
+evicts :: [Address] -> Address -> Bool
 evicts set victim = (length $ filter (== victim) set) >= associativity
 
                                         
 -- Is there at least one eviction set
-exists_eviction :: [Set] -> Bool
+exists_eviction :: [Address] -> Bool
 exists_eviction add = (number_of_eviction_sets add) > 0
 
-
 -- Count number of addresses in eviction sets
-number_of_eviction_addresses :: [Set] -> Int
+number_of_eviction_addresses :: [Address] -> Int
 number_of_eviction_addresses = sum . filter (> associativity) . separate_sets_into_bins
 
-
 -- Returns number of eviction sets for a list of sets
-number_of_eviction_sets :: [Set] -> Int
+number_of_eviction_sets :: [Address] -> Int
 number_of_eviction_sets = length . filter (> associativity) . separate_sets_into_bins
 
-
 -- Takes list of sets and outputs the histogram
-separate_sets_into_bins :: [Set] -> [Int]
+separate_sets_into_bins :: [Address] -> [Int]
 separate_sets_into_bins sets = map (\x -> (length $ filter (==x) $ map show_set sets)) $ [0..(free_cache - 1)]
 
-
 -- Is True when reduction is succesful given a victim set and number of sets
-reduction :: Set -> [Set] -> Bool
+reduction :: Address -> [Address] -> Bool
 reduction v sets =
   ((number_addresses == associativity) && (evicts sets v))
   ||
@@ -138,9 +95,8 @@ reduction v sets =
   where
     number_addresses = length sets
 
-
 -- Is True when reduction is successful given a victim set and number of sets
-reduction_noisy :: Set -> [Set] -> [Set] -> Bool
+reduction_noisy :: Address -> [Address] -> [Address] -> Bool
 reduction_noisy v sets [] = reduction v sets
 reduction_noisy v sets tlb_list =
   ((number_addresses == associativity) && (evicts (sets ++ tlb_list) v))
@@ -151,9 +107,8 @@ reduction_noisy v sets tlb_list =
   where
     new_tlb_list s = take (expected_tlb_misses $ length s) tlb_list
     number_addresses = length sets
-
     
-reduction_combinations :: [Set] -> [[Set]]
+reduction_combinations :: [Address] -> [[Address]]
 reduction_combinations sets = map concat $ map (\x -> deleteN x groups) [0..((length groups) - 1)]
   where
     number_addresses = length sets
