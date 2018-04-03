@@ -47,7 +47,7 @@ tlb_size = 1536
 
 -- TLB associativity
 tlb_bits :: Int
-tlb_bits = 4
+tlb_bits = 2
 
 --------------------------------------------------------------------------------------------------------------
 
@@ -102,9 +102,9 @@ virtual_to_physical_translation (virtual, seed) = PAddress ((take (numberOfRando
 
 ---- Binary test
 
--- Returns 1 if victim address is in eviction set, otherwise 0
-is_address_in_eviction_set :: Set -> [Set] -> Bool
-is_address_in_eviction_set victim set = (length $ filter (== victim) set) >= associativity
+-- Returns True if victim address is in eviction set
+evicts :: [Set] -> Set -> Bool
+evicts set victim = (length $ filter (== victim) set) >= associativity
 
                                         
 -- Is there at least one eviction set
@@ -130,41 +130,36 @@ separate_sets_into_bins sets = map (\x -> (length $ filter (==x) $ map show_set 
 -- Is True when reduction is succesful given a victim set and number of sets
 reduction :: Set -> [Set] -> Bool
 reduction v sets =
-  if (number_addreses == associativity) && (is_address_in_eviction_set v sets)
-  then True
-  else
-    case (find (is_address_in_eviction_set v) $ reduction_combinations sets) of
-      Just new_set -> reduction v new_set
-      Nothing -> False
+  ((number_addresses == associativity) && (evicts sets v))
+  ||
+  (case (find (\s -> evicts s v) $ reduction_combinations sets) of
+     Just new_set -> reduction v new_set
+     Nothing -> False)
   where
-    number_addreses = length sets
+    number_addresses = length sets
 
 
--- Is True when reduction is succesful given a victim set and number of sets
+-- Is True when reduction is successful given a victim set and number of sets
 reduction_noisy :: Set -> [Set] -> [Set] -> Bool
 reduction_noisy v sets [] = reduction v sets
 reduction_noisy v sets tlb_list =
-  if ((number_addreses + number_tlb_addreses) == associativity) && (is_address_in_eviction_set v (sets ++ tlb_list))
-  then True
-  else
-    case (find (is_address_in_eviction_set v) $ reduction_combinations $ sets ++ tlb_list) of
-      Just new_set ->
-        let new_new_set = new_set \\ tlb_list
-            new_tlb_list = take (expected_tlb_misses $ length new_new_set) tlb_list
-        in reduction_noisy v new_new_set new_tlb_list
-      Nothing -> False
+  ((number_addresses == associativity) && (evicts (sets ++ tlb_list) v))
+  ||
+  (case (find (\x -> evicts (x ++ (new_tlb_list x)) v) $ reduction_combinations sets) of
+     Just new_set -> reduction_noisy v new_set $ new_tlb_list new_set
+     Nothing -> False)
   where
-    number_addreses = length sets
-    number_tlb_addreses = length tlb_list
+    new_tlb_list s = take (expected_tlb_misses $ length s) tlb_list
+    number_addresses = length sets
 
     
 reduction_combinations :: [Set] -> [[Set]]
 reduction_combinations sets = map concat $ map (\x -> deleteN x groups) [0..((length groups) - 1)]
   where
-    number_addreses = length sets
-    cei = ceiling $ (fromIntegral number_addreses) / (fromIntegral $ associativity + 1)
-    trun = truncate $ (fromIntegral number_addreses) / (fromIntegral $ associativity + 1)
-    n_cei = mod number_addreses (associativity + 1)
+    number_addresses = length sets
+    cei = ceiling $ (fromIntegral number_addresses) / (fromIntegral $ associativity + 1)
+    trun = truncate $ (fromIntegral number_addresses) / (fromIntegral $ associativity + 1)
+    n_cei = mod number_addresses (associativity + 1)
     n_trun = (associativity + 1) - n_cei
     aux = (take n_cei $ repeat cei) ++ (take n_trun $ repeat trun)
     groups = splitPlaces aux sets

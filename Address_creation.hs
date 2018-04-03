@@ -8,13 +8,20 @@ import System.Random.Shuffle
 import Control.Monad
 
 
-list_random_sets :: Int -> IO ([Set])
-list_random_sets number = replicateM number random_set
+list_random_sets :: Int -> (IO (Set)) -> IO ([Set])
+list_random_sets number randomizer = replicateM number randomizer
+
+random_set_partial :: IO (Set)
+random_set_partial = do
+  r <- randomRIO(0, free_cache - 1)
+  return (create_set r)
 
 random_set :: IO (Set)
 random_set = do
-  r <- randomRIO(0, free_cache - 1)
+  r <- randomRIO(0, (2^cacheSet) - 1)
   return (create_set r)
+
+  
 
 list_random_tlb :: Int -> IO ([Int])
 list_random_tlb number = replicateM number $ randomRIO(0, ((2^tlb_bits) - 1))

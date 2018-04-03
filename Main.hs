@@ -31,8 +31,8 @@ possible_different_addresses = 2^(virtual_address_length - pageOffset - (virtual
 
 -- Save tests
 main = do
-    m <- test_complete test_reduction
-    appendFile "results/sets/results_reduction.txt" ((list_to_string m) ++ "\n")
+    m <- test_complete test_reduction_noisy
+    appendFile "results/sets/results_reduction_noisy3.txt" ((list_to_string m) ++ "\n")
     -- writeFile "resultsTest.txt" ((list_to_string m) ++ "\n")
     where list_to_string = unwords . map show
 
@@ -59,47 +59,47 @@ count_tlb_misses number = do
 -- The list is created by choosing n addresses with the same offset and belonging to the same range but each of a different page 
 test_count_evictions :: Int -> IO(Int)
 test_count_evictions number = do
-  r <- list_random_sets number
+  r <- list_random_sets number random_set_partial
   return (number_of_eviction_sets r)
 
 
 -- Creates list of n sets and counts how many addresses are in eviction sets 
 test_count_evictions_addresses :: Int -> IO(Int)
 test_count_evictions_addresses number = do
-  r <- list_random_sets number
+  r <- list_random_sets number random_set_partial
   return (number_of_eviction_addresses r)
 
 
 -- Returns 1 if there is an evicton set or 0 otherwise
 test_multinomial :: Int -> IO(Int)
 test_multinomial number = do
-  r <- list_random_sets number
+  r <- list_random_sets number random_set_partial
   return (bool_to_int $ exists_eviction r)
 
 
 -- Creates list of sets, and a random victim set, checks if it's in an eviction set
 test_binary :: Int -> IO(Int)
 test_binary number = do
-  r <- list_random_sets number
+  r <- list_random_sets number random_set_partial
   v <- random_set
-  return (bool_to_int $ is_address_in_eviction_set v r)
+  return (bool_to_int $ evicts r v)
 
 
 -- Creates list of sets and returns True if the reduction is successful
 test_reduction :: Int -> IO (Int)
 test_reduction number = do
   let free_cache = 2 ^ free_cache_bits
-  r <- list_random_sets number
-  v <- random_set
+  r <- list_random_sets number random_set_partial
+  v <- random_set_partial
   return (bool_to_int $ reduction v r)
 
 -- Creates list of sets and addreses corresponding to TLB misses and returns True if the reduction is successful
 test_reduction_noisy :: Int -> IO (Int)
 test_reduction_noisy number = do
   let free_cache = 2 ^ free_cache_bits
-  r <- list_random_sets number
-  t <- list_random_sets $ expected_tlb_misses number
-  v <- random_set
+  r <- list_random_sets number random_set_partial
+  t <- list_random_sets (expected_tlb_misses number) random_set
+  v <- random_set_partial
   return (bool_to_int $ reduction_noisy v r t)
 
 -- Mean of a list

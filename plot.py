@@ -33,7 +33,7 @@ plt.plot(rang, myMean)
 # plt.hold('on')
 # plt.plot(rang, myList2)
 plt.grid()
-plt.ylabel('Probability of successful reduction')
+plt.ylabel('Number of addresses in eviction sets')
 plt.xlabel('Number of addresses')
 plt.show()
 
