@@ -4,6 +4,8 @@ import System.Random
 import Data.List
 import Data.List.Split
 
+import Data.Random
+
 -------------- PARAMETERS
 ----- Address
 
@@ -36,16 +38,15 @@ free_cache = 2^free_cache_bits
   
 -- associativity (number of blocks per cache set)
 associativity :: Int 
-associativity = 12
+associativity = 16
 
 
 ------ TLB
-
 -- Has to be multiple of tlb associativity
 tlb_size :: Int
 tlb_size = 1536
 
--- TLB associativity
+-- TLB associativity (bits for tlb associativity)
 tlb_bits :: Int
 tlb_bits = 2
 
@@ -57,7 +58,6 @@ data Address = Address Int
 show_set :: Address -> Int
 show_set (Address a) = a
 
--- Only to be used with valid [Int] 
 create_set :: Int -> Address
 create_set = Address
 
@@ -67,7 +67,28 @@ create_set = Address
 evicts :: [Address] -> Address -> Bool
 evicts set victim = (length $ filter (== victim) set) >= associativity
 
-                                        
+evicts2 :: [Address] -> Address -> IO(Bool)
+evicts2 set victim = chance $ prob $ length $ filter (== victim) set
+
+-- Receives probability and throws a coin with that prob
+chance :: Int -> IO(Bool)
+chance n = do
+  let distr = (take n $ repeat True) ++ (take (100 - n) $ repeat False)
+  r <- sample $ randomElement distr
+  return r
+
+-- Receives number of addresses in eviction set and returns probability of an eviction set
+prob :: Int -> Int
+prob n
+  | n <= 1 = 3
+  | n <= 4 = 10
+  | n <= 8 = 20
+  | n <= 12 = 40
+  | n <= 16 = 80
+  | otherwise = 9
+
+
+  
 -- Is there at least one eviction set
 exists_eviction :: [Address] -> Bool
 exists_eviction add = (number_of_eviction_sets add) > 0
@@ -121,13 +142,14 @@ reduction_combinations sets = map concat $ map (\x -> deleteN x groups) [0..((le
 
   
 ---- TLB
+-- TLB misses for a set of addresses
 tlb_misses :: [Int] -> Int
 tlb_misses = sum . map (\x -> x - tlb_block_size) . filter (> tlb_block_size) . tlb_misses'
   
 tlb_misses' :: [Int] -> [Int]
 tlb_misses' tlbs = map (\x -> length $ filter (== x) tlbs) [0..((2^tlb_bits) - 1)]
 
--- Expected number of misses
+-- Expected number of misses for a number of addresses
 expected_tlb_misses :: Int -> Int
 expected_tlb_misses n =
   let d = n - tlb_size
@@ -145,7 +167,6 @@ deleteN _ []     = []
 deleteN i (a:as)
    | i == 0    = as
    | otherwise = a : deleteN (i-1) as
-
 
 -- Create n_bins combinations of 0 and 1
 bins :: Int -> [[Int]]

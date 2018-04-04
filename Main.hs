@@ -16,31 +16,24 @@ numberAddrToTest_From = 0
 
 numberAddrToTest_To :: Int
 numberAddrToTest_To = 4000
--- numberAddrToTest_To = 4000
 
 iterations :: Int
-iterations = 10
+iterations = 100
 -- iterations = 1000
 
 memoryRange :: Int
 memoryRange = 24
 
-possible_different_addresses :: Int
-possible_different_addresses = 2^(virtual_address_length - pageOffset - (virtual_address_length - memoryRange))
-
-
 -- Save tests
 main = do
-    m <- test_complete test_reduction_noisy
-    appendFile "results/sets/results_reduction_noisy3.txt" ((list_to_string m) ++ "\n")
+    m <- test_complete test_reduction
+    appendFile "results/sets/results_reduction2.txt" ((list_to_string m) ++ "\n")
     -- writeFile "resultsTest.txt" ((list_to_string m) ++ "\n")
     where list_to_string = unwords . map show
-
           
 test_complete test = do
   p <- mapM (do_test_of test) [numberAddrToTest_From, (numberAddrToTest_From + (2*associativity))..numberAddrToTest_To]
   return p
-
   
 do_test_of :: (Int -> IO(Int)) -> Int -> IO(Float)
 do_test_of f n = do
@@ -55,45 +48,53 @@ count_tlb_misses number = do
   return (tlb_misses r)
 
     
--- Creates list of n physical addresses from a virtual address, and counts eviction sets
--- The list is created by choosing n addresses with the same offset and belonging to the same range but each of a different page 
+-- Creates set of number addresses and counts eviction sets
 test_count_evictions :: Int -> IO(Int)
 test_count_evictions number = do
   r <- list_random_sets number random_set_partial
   return (number_of_eviction_sets r)
 
 
--- Creates list of n sets and counts how many addresses are in eviction sets 
+-- Creates set of n addresses and counts how many addresses are in eviction sets 
 test_count_evictions_addresses :: Int -> IO(Int)
 test_count_evictions_addresses number = do
   r <- list_random_sets number random_set_partial
   return (number_of_eviction_addresses r)
 
 
--- Returns 1 if there is an evicton set or 0 otherwise
+-- Creates set of addresses and returns True if there's an eviction set
 test_multinomial :: Int -> IO(Int)
 test_multinomial number = do
   r <- list_random_sets number random_set_partial
   return (bool_to_int $ exists_eviction r)
 
 
--- Creates list of sets, and a random victim set, checks if it's in an eviction set
+-- Creates set of addresses, and a random victim, checks if the set is an eviction set for the victim
 test_binary :: Int -> IO(Int)
 test_binary number = do
   r <- list_random_sets number random_set_partial
-  v <- random_set
+  v <- random_set_partial
   return (bool_to_int $ evicts r v)
 
+-- Creates set of addresses, and a random victim, checks if the set is an eviction set for the victim
+test_binary2 :: Int -> IO(Int)
+test_binary2 number = do
+  r <- list_random_sets number random_set_partial
+  v <- random_set_partial
+  e <- evicts2 r v
+  return (bool_to_int e)
+  
 
--- Creates list of sets and returns True if the reduction is successful
+-- Creates set of addresses and returns True if the reduction is successful
 test_reduction :: Int -> IO (Int)
 test_reduction number = do
   let free_cache = 2 ^ free_cache_bits
   r <- list_random_sets number random_set_partial
   v <- random_set_partial
-  return (bool_to_int $ reduction v r)
+  red <- reduction v r
+  return (bool_to_int red)
 
--- Creates list of sets and addreses corresponding to TLB misses and returns True if the reduction is successful
+-- Creates set of addresses and addreses corresponding to TLB misses and returns True if the reduction is successful
 test_reduction_noisy :: Int -> IO (Int)
 test_reduction_noisy number = do
   let free_cache = 2 ^ free_cache_bits

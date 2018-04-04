@@ -28,7 +28,7 @@ myMean = np.mean(np.asarray(myList), axis=0)
 #         myList2 = list(map(float, line.replace('"', '').strip().split()))
 
 
-rang = np.arange(0, 4000, 24).tolist()
+rang = np.arange(0, 4032, 32).tolist()
 plt.plot(rang, myMean)
 # plt.hold('on')
 # plt.plot(rang, myList2)
