@@ -15,19 +15,43 @@ numberAddrToTest_From :: Int
 numberAddrToTest_From = 0
 
 numberAddrToTest_To :: Int
-numberAddrToTest_To = 4000
+numberAddrToTest_To = 6000
 
 iterations :: Int
-iterations = 100
+iterations = 10
 -- iterations = 1000
 
 memoryRange :: Int
 memoryRange = 24
 
+test = do
+    r <- list_random_sets 4000 random_set_partial
+    v <- random_set_partial
+    res <- reduction v r
+    putStrLn $ show res
+
+test2 = do
+    r <- list_random_sets 4000 random_set_partial
+    v <- random_set_partial
+    let number_addresses = length r
+    e <- findM (\s -> evicts2 s v) $ reduction_combinations r
+    putStrLn $ show e
+        
+
+-- test3 :: Int -> IO(Bool)
+-- test3 pr = do
+--     e <- chance pr
+--     return e
+    
+-- it iterations pr = do
+--   p <- replicateM iterations $ test3 pr
+--   let r = length $ filter (== True) p
+--   putStrLn $ show r
+  
 -- Save tests
 main = do
     m <- test_complete test_reduction
-    appendFile "results/sets/results_reduction2.txt" ((list_to_string m) ++ "\n")
+    appendFile "results/sets/results_reduction_4.txt" ((list_to_string m) ++ "\n")
     -- writeFile "resultsTest.txt" ((list_to_string m) ++ "\n")
     where list_to_string = unwords . map show
           
@@ -94,14 +118,22 @@ test_reduction number = do
   red <- reduction v r
   return (bool_to_int red)
 
--- Creates set of addresses and addreses corresponding to TLB misses and returns True if the reduction is successful
-test_reduction_noisy :: Int -> IO (Int)
-test_reduction_noisy number = do
+-- Creates set of addresses and returns True if the reduction is successful
+test_reduction_original :: Int -> IO (Int)
+test_reduction_original number = do
   let free_cache = 2 ^ free_cache_bits
   r <- list_random_sets number random_set_partial
-  t <- list_random_sets (expected_tlb_misses number) random_set
   v <- random_set_partial
-  return (bool_to_int $ reduction_noisy v r t)
+  return (bool_to_int $ reduction_original v r)
+  
+-- -- Creates set of addresses and addreses corresponding to TLB misses and returns True if the reduction is successful
+-- test_reduction_noisy :: Int -> IO (Int)
+-- test_reduction_noisy number = do
+--   let free_cache = 2 ^ free_cache_bits
+--   r <- list_random_sets number random_set_partial
+--   t <- list_random_sets (expected_tlb_misses number) random_set
+--   v <- random_set_partial
+--   return (bool_to_int $ reduction_noisy v r t)
 
 -- Mean of a list
 mean :: [Int] -> Float

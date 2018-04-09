@@ -72,22 +72,36 @@ evicts2 set victim = chance $ prob $ length $ filter (== victim) set
 
 -- Receives probability and throws a coin with that prob
 chance :: Int -> IO(Bool)
-chance n = do
-  let distr = (take n $ repeat True) ++ (take (100 - n) $ repeat False)
+chance nu = do
+  let distr = (take nu $ repeat True) ++ (take (100 - nu) $ repeat False)
   r <- sample $ randomElement distr
   return r
+  
 
 -- Receives number of addresses in eviction set and returns probability of an eviction set
 prob :: Int -> Int
 prob n
-  | n <= 1 = 3
-  | n <= 4 = 10
-  | n <= 8 = 20
-  | n <= 12 = 40
+  | n <= 1 = 0
+  | n <= 4 = 0
+  | n <= 15 = 0
   | n <= 16 = 80
-  | otherwise = 9
+  | otherwise = 100
+  
+-- -- Receives number of addresses in eviction set and returns probability of an eviction set
+-- prob :: Int -> Int
+-- prob n
+--   | n < associativity = 0
+--   | otherwise = 100
 
-
+-- -- Receives number of addresses in eviction set and returns probability of an eviction set
+-- prob :: Int -> Int
+-- prob n
+--   | n <= 1 = 3
+--   | n <= 4 = 10
+--   | n <= 8 = 20
+--   | n <= 12 = 40
+--   | n <= 16 = 80
+--   | otherwise = 99
   
 -- Is there at least one eviction set
 exists_eviction :: [Address] -> Bool
@@ -105,30 +119,72 @@ number_of_eviction_sets = length . filter (> associativity) . separate_sets_into
 separate_sets_into_bins :: [Address] -> [Int]
 separate_sets_into_bins sets = map (\x -> (length $ filter (==x) $ map show_set sets)) $ [0..(free_cache - 1)]
 
--- Is True when reduction is succesful given a victim set and number of sets
-reduction :: Address -> [Address] -> Bool
-reduction v sets =
+reduction_original :: Address -> [Address] -> Bool
+reduction_original v sets =
   ((number_addresses == associativity) && (evicts sets v))
   ||
   (case (find (\s -> evicts s v) $ reduction_combinations sets) of
-     Just new_set -> reduction v new_set
+     Just new_set -> reduction_original v new_set
      Nothing -> False)
   where
     number_addresses = length sets
 
+
 -- Is True when reduction is successful given a victim set and number of sets
-reduction_noisy :: Address -> [Address] -> [Address] -> Bool
-reduction_noisy v sets [] = reduction v sets
-reduction_noisy v sets tlb_list =
+reduction_noisy_original :: Address -> [Address] -> [Address] -> Bool
+reduction_noisy_original v sets [] = reduction_original v sets
+reduction_noisy_original v sets tlb_list =
   ((number_addresses == associativity) && (evicts (sets ++ tlb_list) v))
   ||
   (case (find (\x -> evicts (x ++ (new_tlb_list x)) v) $ reduction_combinations sets) of
-     Just new_set -> reduction_noisy v new_set $ new_tlb_list new_set
+     Just new_set -> reduction_noisy_original v new_set $ new_tlb_list new_set
      Nothing -> False)
   where
     new_tlb_list s = take (expected_tlb_misses $ length s) tlb_list
     number_addresses = length sets
+
     
+
+-- Is True when reduction is succesful given a victim set and number of sets
+reduction :: Address -> [Address] -> IO(Bool)
+reduction v sets = do
+  let number_addresses = length sets
+  -- if (number_addresses == 15) then putStrLn "1" else putStr ""
+  e2 <- evicts2 sets v
+  let b = (number_addresses <= associativity) && (e2)
+  -- putStrLn $ show number_addresses
+  if b then return True
+    else do
+      e <- findM (\s -> evicts2 s v) $ reduction_combinations sets
+      case e of
+        Just new_set -> do
+          r <- reduction v new_set
+          return r
+        Nothing -> do return False
+        
+    
+-- Is True when reduction is successful given a victim set and number of sets
+reduction_noisy :: Address -> [Address] -> [Address] -> IO(Bool)
+reduction_noisy v sets [] = do
+  r <- reduction v sets
+  return r
+reduction_noisy v sets tlb_list = do
+  let number_addresses = length sets
+  e2 <- evicts2 (sets ++ tlb_list) v
+  let b = (number_addresses <= associativity) && (e2)
+  if b then return True
+    else do
+    e <- findM (\x -> evicts2 (x ++ (new_tlb_list x)) v) $ reduction_combinations sets
+    case e of
+     Just new_set -> do
+       r <- reduction_noisy v new_set $ new_tlb_list new_set
+       return r
+     Nothing -> do return False
+  where
+    new_tlb_list s = take (expected_tlb_misses $ length s) tlb_list
+    number_addresses = length sets
+
+                       
 reduction_combinations :: [Address] -> [[Address]]
 reduction_combinations sets = map concat $ map (\x -> deleteN x groups) [0..((length groups) - 1)]
   where
@@ -171,3 +227,13 @@ deleteN i (a:as)
 -- Create n_bins combinations of 0 and 1
 bins :: Int -> [[Int]]
 bins n_bins = take (2^n_bins) $ filter((== n_bins) . length) $ concat $ iterate ((:) <$> [0, 1] <*>) [[]]
+
+
+--  Like 'find', but where the test can be monadic.
+findM :: Monad m => (a -> m Bool) -> [a] -> m (Maybe a)
+findM p [] = return Nothing
+findM p (x:xs) = ifM (p x) (return $ Just x) (findM p xs)
+
+-- Like @if@, but where the test can be monadic.
+ifM :: Monad m => m Bool -> m a -> m a -> m a
+ifM b t f = do b <- b; if b then t else f
