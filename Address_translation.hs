@@ -55,20 +55,24 @@ tlb_bits = 2
 data Address = Address Int
   deriving (Read, Show, Eq)
 
+-- The cache state is represented by the number of addresses in the victim set, and the total number of addresses
+data CacheState = CacheState(Int, Int)
+  deriving (Read, Show, Eq)
+
 show_set :: Address -> Int
 show_set (Address a) = a
+
+show_cach :: CacheState -> (Int, Int)
+show_cach (CacheState (a, b)) = (a, b)
 
 create_set :: Int -> Address
 create_set = Address
 
 ---- Binary test
 
--- Returns True if victim address is in eviction set
-evicts :: [Address] -> Address -> Bool
-evicts set victim = (length $ filter (== victim) set) >= associativity
-
-evicts2 :: [Address] -> Address -> IO(Bool)
-evicts2 set victim = chance $ prob $ length $ filter (== victim) set
+-- Returns True if victim address is in eviction set with a probability of failure
+evicts :: CacheState -> IO(Bool)
+evicts (CacheState (ev, n)) = chance $ prob ev n
 
 -- Receives probability and throws a coin with that prob
 chance :: Int -> IO(Bool)
@@ -77,32 +81,23 @@ chance nu = do
   r <- sample $ randomElement distr
   return r
   
-
 -- Receives number of addresses in eviction set and returns probability of an eviction set
-prob :: Int -> Int
-prob n
-  | n <= 1 = 0
-  | n <= 4 = 0
-  | n <= 15 = 0
-  | n <= 16 = 80
+prob :: Int -> Int -> Int
+prob ev n
+  | ev < 16 = 0
+  | ev < 20 = if (n < 1800) then 90 else 60
+  | ev <= 24 = if (n < 2400) then 80 else 60
   | otherwise = 100
+
   
 -- -- Receives number of addresses in eviction set and returns probability of an eviction set
--- prob :: Int -> Int
--- prob n
---   | n < associativity = 0
+-- prob :: Int -> Int -> Int
+-- prob ev n
+--   | ev < 16 = 0
+--   | ev < 20 = if (n < 1800) then 100 else 75
+--   | ev <= 24 = if (n < 2400) then 100 else 75
 --   | otherwise = 100
 
--- -- Receives number of addresses in eviction set and returns probability of an eviction set
--- prob :: Int -> Int
--- prob n
---   | n <= 1 = 3
---   | n <= 4 = 10
---   | n <= 8 = 20
---   | n <= 12 = 40
---   | n <= 16 = 80
---   | otherwise = 99
-  
 -- Is there at least one eviction set
 exists_eviction :: [Address] -> Bool
 exists_eviction add = (number_of_eviction_sets add) > 0
@@ -119,84 +114,81 @@ number_of_eviction_sets = length . filter (> associativity) . separate_sets_into
 separate_sets_into_bins :: [Address] -> [Int]
 separate_sets_into_bins sets = map (\x -> (length $ filter (==x) $ map show_set sets)) $ [0..(free_cache - 1)]
 
-reduction_original :: Address -> [Address] -> Bool
-reduction_original v sets =
-  ((number_addresses == associativity) && (evicts sets v))
-  ||
-  (case (find (\s -> evicts s v) $ reduction_combinations sets) of
-     Just new_set -> reduction_original v new_set
-     Nothing -> False)
-  where
-    number_addresses = length sets
-
-
--- Is True when reduction is successful given a victim set and number of sets
-reduction_noisy_original :: Address -> [Address] -> [Address] -> Bool
-reduction_noisy_original v sets [] = reduction_original v sets
-reduction_noisy_original v sets tlb_list =
-  ((number_addresses == associativity) && (evicts (sets ++ tlb_list) v))
-  ||
-  (case (find (\x -> evicts (x ++ (new_tlb_list x)) v) $ reduction_combinations sets) of
-     Just new_set -> reduction_noisy_original v new_set $ new_tlb_list new_set
-     Nothing -> False)
-  where
-    new_tlb_list s = take (expected_tlb_misses $ length s) tlb_list
-    number_addresses = length sets
-
-    
 
 -- Is True when reduction is succesful given a victim set and number of sets
-reduction :: Address -> [Address] -> IO(Bool)
-reduction v sets = do
-  let number_addresses = length sets
-  -- if (number_addresses == 15) then putStrLn "1" else putStr ""
-  e2 <- evicts2 sets v
-  let b = (number_addresses <= associativity) && (e2)
-  -- putStrLn $ show number_addresses
+reduction :: CacheState -> IO(Bool)
+reduction state@(CacheState(ev, total)) = do
+  e2 <- evicts state
+  let b = (associativity == total) && (e2)
   if b then return True
     else do
-      e <- findM (\s -> evicts2 s v) $ reduction_combinations sets
+      c <- reduction_combinations state
+      e <- findM evicts c
       case e of
-        Just new_set -> do
-          r <- reduction v new_set
+        Just new_state -> do
+          r <- reduction new_state
           return r
         Nothing -> do return False
         
     
--- Is True when reduction is successful given a victim set and number of sets
-reduction_noisy :: Address -> [Address] -> [Address] -> IO(Bool)
-reduction_noisy v sets [] = do
-  r <- reduction v sets
-  return r
-reduction_noisy v sets tlb_list = do
-  let number_addresses = length sets
-  e2 <- evicts2 (sets ++ tlb_list) v
-  let b = (number_addresses <= associativity) && (e2)
-  if b then return True
-    else do
-    e <- findM (\x -> evicts2 (x ++ (new_tlb_list x)) v) $ reduction_combinations sets
-    case e of
-     Just new_set -> do
-       r <- reduction_noisy v new_set $ new_tlb_list new_set
-       return r
-     Nothing -> do return False
-  where
-    new_tlb_list s = take (expected_tlb_misses $ length s) tlb_list
-    number_addresses = length sets
+-- -- Is True when reduction is successful given a victim set and number of sets
+-- reduction_noisy :: Address -> [Address] -> [Address] -> IO(Bool)
+-- reduction_noisy v sets [] = do
+--   r <- reduction v sets
+--   return r
+-- reduction_noisy v sets tlb_list = do
+--   let number_addresses = length sets
+--   e2 <- evicts2 (sets ++ tlb_list) v
+--   let b = (number_addresses <= associativity) && (e2)
+--   if b then return True
+--     else do
+--     e <- findM (\x -> evicts2 (x ++ (new_tlb_list x)) v) $ reduction_combinations sets
+--     case e of
+--      Just new_set -> do
+--        r <- reduction_noisy v new_set $ new_tlb_list new_set
+--        return r
+--      Nothing -> do return False
+--   where
+--     new_tlb_list s = take (expected_tlb_misses $ length s) tlb_list
+--     number_addresses = length sets
 
                        
-reduction_combinations :: [Address] -> [[Address]]
-reduction_combinations sets = map concat $ map (\x -> deleteN x groups) [0..((length groups) - 1)]
+reduction_combinations :: CacheState -> IO([CacheState])
+reduction_combinations state@(CacheState (ev, total)) = do
+  r <- distribute_ev ev (map (\x -> CacheState (0, x)) aux) [0..associativity]
+  -- let m = map (\(CacheState(x, t)) -> CacheState(ev - x, t)) r
+  let m = zipWith (\(CacheState(x, t)) l -> CacheState (ev - x, total - l)) r aux
+  return m
   where
-    number_addresses = length sets
-    cei = ceiling $ (fromIntegral number_addresses) / (fromIntegral $ associativity + 1)
-    trun = truncate $ (fromIntegral number_addresses) / (fromIntegral $ associativity + 1)
-    n_cei = mod number_addresses (associativity + 1)
+    cei = ceiling $ (fromIntegral total) / (fromIntegral $ associativity + 1)
+    trun = truncate $ (fromIntegral total) / (fromIntegral $ associativity + 1)
+    n_cei = mod total (associativity + 1)
     n_trun = (associativity + 1) - n_cei
     aux = (take n_cei $ repeat cei) ++ (take n_trun $ repeat trun)
-    groups = splitPlaces aux sets
+    
+distribute_ev :: Int -> [CacheState] -> [Int] -> IO([CacheState])
+distribute_ev 0 tups _ = do return tups
+distribute_ev ev tups possib = do
+  s <- sample $ randomElement possib
+  let t = change s tups
+  case t of
+    Just tups' -> do
+      r <- distribute_ev (ev - 1) tups' possib
+      return r
+    Nothing -> do
+      let possib' = possib \\ [s]
+      r <- distribute_ev ev tups possib'
+      return r
 
+change :: Int -> [CacheState] -> Maybe ([CacheState])
+change s tups =
+  case (tups!!s) of
+    CacheState(_, 0) -> Nothing
+    CacheState(ev, total) ->
+      Just ((take s tups) ++ [CacheState(ev + 1, total - 1)] ++ (drop (s + 1) tups))
   
+
+
 ---- TLB
 -- TLB misses for a set of addresses
 tlb_misses :: [Int] -> Int

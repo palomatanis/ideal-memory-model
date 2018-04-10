@@ -23,3 +23,20 @@ random_set = do
 
 list_random_tlb :: Int -> IO ([Int])
 list_random_tlb number = replicateM number $ randomRIO(0, ((2^tlb_bits) - 1))
+
+
+-- Generates random cache state from victim and total number of addresses
+random_cacheState :: Address -> Int -> IO(CacheState)
+random_cacheState vic number = do
+  r <- random_cacheState' vic number 0
+  return (CacheState (r, number))
+
+random_cacheState' :: Address -> Int -> Int -> IO(Int)
+random_cacheState' _ 0 acc = do return acc
+random_cacheState' vic number acc = do
+  r <- random_set_partial
+  let comp = r == vic
+  rr <- random_cacheState' vic (number-1) (if comp then (acc+1) else acc)
+  return rr
+
+    
