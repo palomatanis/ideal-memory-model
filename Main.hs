@@ -18,7 +18,7 @@ numberAddrToTest_To :: Int
 numberAddrToTest_To = 6000
 
 iterations :: Int
-iterations = 100
+iterations = 50
 -- iterations = 1000
 
 memoryRange :: Int
@@ -32,9 +32,9 @@ memoryRange = 24
   
 -- Save tests
 main = do
-    m <- test_complete test_reduction
-    -- appendFile "results/sets/results_reduction_kn_9.txt" ((list_to_string m) ++ "\n")
-    writeFile "results/sets/results_reduction_kn_1.txt" ((list_to_string m) ++ "\n")
+    m <- test_complete test_binary
+    appendFile "results/sets/results_binary_kn_o.txt" ((list_to_string m) ++ "\n")
+    --writeFile "results/sets/results_reduction_kn_5.txt" ((list_to_string m) ++ "\n")
     where list_to_string = unwords . map show
           
 test_complete test = do

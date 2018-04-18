@@ -85,10 +85,18 @@ chance nu = do
 prob :: Int -> Int -> Int
 prob ev n
   | ev < 16 = 0
-  | ev < 20 = if (n < 1800) then 90 else 60
-  | ev <= 24 = if (n < 2400) then 80 else 60
-  | otherwise = 100
+  | n < 1000 = 70
+  | n < 1400 = 60
+  | n < 1800 = 50
+  | n < 2200 = 40
+  | n < 2500 = 15
+  | otherwise = 15
 
+-- -- Receives number of addresses in eviction set and returns probability of an eviction set
+-- prob :: Int -> Int -> Int
+-- prob ev n
+--   | ev < 16 = 0
+--   | otherwise = 100
   
 -- -- Receives number of addresses in eviction set and returns probability of an eviction set
 -- prob :: Int -> Int -> Int
