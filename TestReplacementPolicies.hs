@@ -17,14 +17,22 @@ import ReplacementPolicies
 --   p <- replicateM iterations $ f n
 --   return (mean p)
 
-
 test pol = do
-  let l = pol (consecutive_trace 20)
+  let l = pol (many_consecutive_traces 5 $ consecutive_trace 20)
+  putStrLn $ show l
+  
+testm pol = do
+  l <- pol (many_consecutive_traces 5 $ consecutive_trace 20)
   putStrLn $ show l
 
 consecutive_trace :: Int -> Trace
 consecutive_trace n = Trace (map SetAddress [1..n])
 
+
+many_consecutive_traces :: Int -> Trace -> Trace
+many_consecutive_traces n (Trace t) = Trace (concat $ replicate n t)
+
+  
 -- random_trace :: Int -> IO(Trace)
 -- random_trace n = mapM SetAddress $ replicateM n $ randomRIO()
   
