@@ -1,7 +1,6 @@
 module Address_creation  where
 
 import System.Random
-import System.Random.Shuffle
 import Control.Monad
 
 -------------- PARAMETERS

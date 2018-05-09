@@ -1,6 +1,8 @@
 module Address_translation  where
 
 import System.Random
+import System.Random.Shuffle
+
 import Data.List
 import Data.List.Split
 
@@ -13,11 +15,11 @@ import TestReplacementPolicies
 ---- Binary test
 
 evicts :: CacheState -> RepPol -> Bool
-evicts (CacheState (ev, n)) policy = (testEviction policy n) == 1
+evicts (CacheState (ev, _)) policy = (testEviction policy ev) == 1
 
 evictsM :: CacheState -> RepPolM -> IO(Bool)
-evictsM (CacheState (ev, n)) policy = do
-  h <- testEvictionM policy n
+evictsM (CacheState (ev, _)) policy = do
+  h <- testEvictionM policy ev
   let v = h == 1
   return v
 
@@ -37,6 +39,26 @@ number_of_eviction_sets = length . filter (> associativity) . separate_sets_into
 separate_sets_into_bins :: [Address] -> [Int]
 separate_sets_into_bins sets = map (\x -> (length $ filter (==x) $ map show_set sets)) $ [0..(free_cache - 1)]
 
+
+-- Naive reduction
+naive_reduction :: CacheState ->  RepPol -> Bool
+naive_reduction state@(CacheState(ev, total)) repPol = evicts (CacheState (sum conflict_set, length conflict_set)) repPol
+  where set = (take ev $ repeat 1) ++ (take (total - ev) $ repeat  0)
+        conflict_set = conf set repPol
+
+conf :: [Int] -> RepPol -> [Int]
+conf set p = conf' set [] p
+
+conf' :: [Int] -> [Int] -> RepPol -> [Int]
+conf' [] s _ = s
+conf' set conf_set p = conf' (tail set) (if (probe (head set) conf_set p) then conf_set else ((head set) : conf_set)) p
+
+probe :: Int -> [Int] -> RepPol -> Bool
+probe 0 _ _ = False
+probe _ set pol = evicts (CacheState(sum set, length set)) pol
+
+
+  
 -- Is True when reduction is succesful given a victim set and number of sets
 reduction :: CacheState -> RepPol -> IO(Bool)
 reduction state@(CacheState(ev, total)) policy = do
