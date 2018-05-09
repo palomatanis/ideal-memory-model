@@ -1,3 +1,6 @@
+module TestReplacementPolicies where
+
+
 import ReplacementPolicies
 
 
@@ -18,13 +21,27 @@ import ReplacementPolicies
 --   return (mean p)
 
 test pol = do
-  let l = pol (many_consecutive_traces 5 $ consecutive_trace 20)
+  let l = pol initialSet (many_consecutive_traces 5 $ consecutive_trace 20)
   putStrLn $ show l
   
 testm pol = do
-  l <- pol (many_consecutive_traces 5 $ consecutive_trace 20)
+  l <- pol initialSet (many_consecutive_traces 5 $ consecutive_trace 20)
   putStrLn $ show l
 
+-- test eviction policy for n congruent addresses
+testEviction pol n = h2
+  where (Trace t) = consecutive_trace n
+        (s, h) = pol initialSet (Trace ((SetAddress (n + 1)) : t))
+        (s2, Hit h2) = pol s (Trace [(SetAddress(n + 1))])
+  
+-- test eviction policy for n congruent addresses - Probabilistic replacement policies
+testEvictionM pol n = do
+  let (Trace t) = consecutive_trace n
+  (s, h) <- pol initialSet (Trace ((SetAddress (n + 1)) : t))
+  (s2, Hit h2) <- pol s (Trace [(SetAddress(n + 1))])
+  return h2
+
+  
 consecutive_trace :: Int -> Trace
 consecutive_trace n = Trace (map SetAddress [1..n])
 

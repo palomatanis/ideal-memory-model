@@ -2,6 +2,7 @@ module Main where
 
 import Address_translation
 import Address_creation
+import ReplacementPolicies
 
 import System.Random
 import Control.Monad
@@ -79,7 +80,7 @@ test_binary :: Int -> IO(Int)
 test_binary number = do
   v <- random_set_partial
   r <- random_cacheState v number
-  e <- evicts r
+  let e = evicts r lru
   return (bool_to_int e)
   
 
@@ -88,18 +89,28 @@ test_reduction :: Int -> IO (Int)
 test_reduction number = do
   v <- random_set_partial
   r <- random_cacheState v number
-  red <- reduction r
+  red <- reduction r lru
+  return (bool_to_int red)
+
+
+-- Creates set of addresses and returns True if the reduction is successful
+test_reductionM :: Int -> IO (Int)
+test_reductionM number = do
+  v <- random_set_partial
+  r <- random_cacheState v number
+  red <- reductionM r rr
+  return (bool_to_int red)
+
+  
+-- Creates set of addresses and addreses corresponding to TLB misses and returns True if the reduction is successful
+test_reduction_noisy :: Int -> IO (Int)
+test_reduction_noisy number = do
+  v <- random_set_partial
+  r <- random_cacheState v number
+  t <- new_tlb_list (expected_tlb_misses number)
+  red <- reduction_noisy r t lru
   return (bool_to_int red)
   
--- -- Creates set of addresses and addreses corresponding to TLB misses and returns True if the reduction is successful
--- test_reduction_noisy :: Int -> IO (Int)
--- test_reduction_noisy number = do
---   let free_cache = 2 ^ free_cache_bits
---   r <- list_random_sets number random_set_partial
---   t <- list_random_sets (expected_tlb_misses number) random_set
---   v <- random_set_partial
---   return (bool_to_int $ reduction_noisy v r t)
-
 -- Mean of a list
 mean :: [Int] -> Float
 mean l = (fromIntegral $ sum l)/(fromIntegral $ length l)

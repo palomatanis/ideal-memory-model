@@ -25,11 +25,13 @@ data HitNumber = Hit Int
 
 data Bin = Zero | One
 
+type RepPol = Set -> Trace -> (Set, HitNumber)
+type RepPolM = Set -> Trace -> IO(Set, HitNumber)
 
  -- Least recently used
-lru :: Trace -> (Set, HitNumber)
-lru trace = (s, h)
-  where (t, s, h) = lru'(trace, initialSet, Hit 0)
+lru :: RepPol
+lru set trace = (s, h)
+  where (t, s, h) = lru'(trace, set, Hit 0)
 
 lru' :: (Trace, Set, HitNumber) -> (Trace, Set, HitNumber)
 lru' i@(Trace [], _, _) = i
@@ -41,9 +43,9 @@ lru' (Trace trace, Set set, Hit hit) =
 
 
 -- Most recently used
-mru :: Trace -> (Set, HitNumber)
-mru trace = (s, h)
-  where (t, s, h) = mru'(trace, initialSet, Hit 0)
+mru :: RepPol
+mru set trace = (s, h)
+  where (t, s, h) = mru'(trace, set, Hit 0)
 
 mru' :: (Trace, Set, HitNumber) -> (Trace, Set, HitNumber)
 mru' i@(Trace [], _, _) = i
@@ -58,9 +60,9 @@ mru' (Trace trace, Set set, Hit hit) =
 
 
 -- Random replacement
-rr :: Trace -> IO(Set, HitNumber)
-rr trace = do
-  (t, s, h) <- rr'(trace, initialSet, Hit 0)
+rr :: RepPolM
+rr set trace = do
+  (t, s, h) <- rr'(trace, set, Hit 0)
   return (s, h)
 
 rr' :: (Trace, Set, HitNumber) -> IO(Trace, Set, HitNumber)
@@ -83,9 +85,9 @@ rr' (Trace trace, Set set, Hit hit) =
 
 
 -- First in first out
-fifo :: Trace -> (Set, HitNumber)
-fifo trace = (s, h)
-  where (t, s, h) = fifo'(trace, initialSet, Hit 0)
+fifo :: RepPol
+fifo set trace = (s, h)
+  where (t, s, h) = fifo'(trace, set, Hit 0)
 
 fifo' :: (Trace, Set, HitNumber) -> (Trace, Set, HitNumber)
 fifo' i@(Trace [], _, _) = i
@@ -97,9 +99,9 @@ fifo' (Trace trace, Set set, Hit hit) =
 
 
 -- LRU insertion policy
-lip :: Trace -> (Set, HitNumber)
-lip trace = (s, h)
-  where (t, s, h) = lip'(trace, initialSet, Hit 0)
+lip :: RepPol
+lip set trace = (s, h)
+  where (t, s, h) = lip'(trace, set, Hit 0)
 
 lip' :: (Trace, Set, HitNumber) -> (Trace, Set, HitNumber)
 lip' i@(Trace [], _, _) = i
@@ -111,9 +113,9 @@ lip' (Trace trace, Set set, Hit hit) =
 
 
 -- Bimodal insertion policy
-bip :: Trace -> IO(Set, HitNumber)
-bip trace = do
-  (t, s, h) <- bip'(trace, initialSet, Hit 0)
+bip :: RepPolM
+bip set trace = do
+  (t, s, h) <- bip'(trace, set, Hit 0)
   return (s, h)
 
 bip' :: (Trace, Set, HitNumber) -> IO(Trace, Set, HitNumber)
@@ -137,7 +139,7 @@ bip' (Trace trace, Set set, Hit hit) =
 
 
 
--- plru :: Trace -> (Set, HitNumber)
+-- plru :: Set -> Trace -> (Set, HitNumber)
 -- plru trace = (s, h)
 --   where (t, s, h) = plru'(trace, initialSet, Hit 0)
 

@@ -6,105 +6,20 @@ import Data.List.Split
 
 import Data.Random
 
--------------- PARAMETERS
------ Address
-
-virtual_address_length :: Int
-virtual_address_length = 48
-
-physical_address_length :: Int
-physical_address_length = 34
-
--- Bits of page index , between 0 and addressLength
-pageOffset :: Int
-pageOffset = 12
-
------ Cache
-
--- Number of offset bits (n bits for blocks of 2^n)
-cacheOffset :: Int
-cacheOffset = 6
-
--- Number of bits for set (s bits for 2^s sets)
-cacheSet :: Int
-cacheSet = 13
-
--- Actual number of cache bits that can change
-free_cache_bits :: Int
-free_cache_bits = cacheOffset + cacheSet - pageOffset
-
-free_cache :: Int
-free_cache = 2^free_cache_bits
-  
--- associativity (number of blocks per cache set)
-associativity :: Int 
-associativity = 16
-
-
------- TLB
--- Has to be multiple of tlb associativity
-tlb_size :: Int
-tlb_size = 1536
-
--- TLB associativity (bits for tlb associativity)
-tlb_bits :: Int
-tlb_bits = 2
-
---------------------------------------------------------------------------------------------------------------
-
-data Address = Address Int
-  deriving (Read, Show, Eq)
-
--- The cache state is represented by the number of addresses in the victim set, and the total number of addresses
-data CacheState = CacheState(Int, Int)
-  deriving (Read, Show, Eq)
-
-show_set :: Address -> Int
-show_set (Address a) = a
-
-show_cach :: CacheState -> (Int, Int)
-show_cach (CacheState (a, b)) = (a, b)
-
-create_set :: Int -> Address
-create_set = Address
+import Address_creation
+import ReplacementPolicies
+import TestReplacementPolicies
 
 ---- Binary test
 
--- Returns True if victim address is in eviction set with a probability of failure
-evicts :: CacheState -> IO(Bool)
-evicts (CacheState (ev, n)) = chance $ prob ev n
+evicts :: CacheState -> RepPol -> Bool
+evicts (CacheState (ev, n)) policy = (testEviction policy n) == 1
 
--- Receives probability and throws a coin with that prob
-chance :: Int -> IO(Bool)
-chance nu = do
-  let distr = (take nu $ repeat True) ++ (take (100 - nu) $ repeat False)
-  r <- sample $ randomElement distr
-  return r
-  
--- Receives number of addresses in eviction set and returns probability of an eviction set
-prob :: Int -> Int -> Int
-prob ev n
-  | ev < 16 = 0
-  | n < 1000 = 70
-  | n < 1400 = 60
-  | n < 1800 = 50
-  | n < 2200 = 40
-  | n < 2500 = 15
-  | otherwise = 15
-
--- -- Receives number of addresses in eviction set and returns probability of an eviction set
--- prob :: Int -> Int -> Int
--- prob ev n
---   | ev < 16 = 0
---   | otherwise = 100
-  
--- -- Receives number of addresses in eviction set and returns probability of an eviction set
--- prob :: Int -> Int -> Int
--- prob ev n
---   | ev < 16 = 0
---   | ev < 20 = if (n < 1800) then 100 else 75
---   | ev <= 24 = if (n < 2400) then 100 else 75
---   | otherwise = 100
+evictsM :: CacheState -> RepPolM -> IO(Bool)
+evictsM (CacheState (ev, n)) policy = do
+  h <- testEvictionM policy n
+  let v = h == 1
+  return v
 
 -- Is there at least one eviction set
 exists_eviction :: [Address] -> Bool
@@ -122,43 +37,70 @@ number_of_eviction_sets = length . filter (> associativity) . separate_sets_into
 separate_sets_into_bins :: [Address] -> [Int]
 separate_sets_into_bins sets = map (\x -> (length $ filter (==x) $ map show_set sets)) $ [0..(free_cache - 1)]
 
-
 -- Is True when reduction is succesful given a victim set and number of sets
-reduction :: CacheState -> IO(Bool)
-reduction state@(CacheState(ev, total)) = do
-  e2 <- evicts state
+reduction :: CacheState -> RepPol -> IO(Bool)
+reduction state@(CacheState(ev, total)) policy = do
+  if ((associativity == total) && (evicts state policy)) then return True
+    else do
+      c <- reduction_combinations state
+      case (find (\x -> evicts x policy) c) of
+        Just new_state -> do
+          r <- reduction new_state policy
+          return r
+        Nothing -> do return False
+        
+-- Is True when reduction is succesful given a victim set and number of sets -- For probabilistic replacement policies
+reductionM :: CacheState -> RepPolM -> IO(Bool)
+reductionM state@(CacheState(ev, total)) policy = do
+  e2 <- evictsM state policy
   let b = (associativity == total) && (e2)
   if b then return True
     else do
       c <- reduction_combinations state
-      e <- findM evicts c
+      e <- findM (\x -> evictsM x policy) c
       case e of
         Just new_state -> do
-          r <- reduction new_state
+          r <- reductionM new_state policy
           return r
         Nothing -> do return False
+
         
-    
--- -- Is True when reduction is successful given a victim set and number of sets
--- reduction_noisy :: Address -> [Address] -> [Address] -> IO(Bool)
--- reduction_noisy v sets [] = do
---   r <- reduction v sets
---   return r
--- reduction_noisy v sets tlb_list = do
---   let number_addresses = length sets
---   e2 <- evicts2 (sets ++ tlb_list) v
---   let b = (number_addresses <= associativity) && (e2)
---   if b then return True
---     else do
---     e <- findM (\x -> evicts2 (x ++ (new_tlb_list x)) v) $ reduction_combinations sets
---     case e of
---      Just new_set -> do
---        r <- reduction_noisy v new_set $ new_tlb_list new_set
---        return r
---      Nothing -> do return False
---   where
---     new_tlb_list s = take (expected_tlb_misses $ length s) tlb_list
---     number_addresses = length sets
+-- Is True when reduction is successful given a victim set and number of sets
+reduction_noisy :: CacheState -> CacheState -> RepPol ->  IO(Bool)
+reduction_noisy state tlb@(CacheState(0, _)) policy = do
+  r <- reduction state policy
+  return r
+reduction_noisy state@(CacheState(ev, total)) tlb@(CacheState(con, tlb_tot)) policy = do
+  if ((associativity == total) && (evicts (CacheState(ev + con, total + tlb_tot)) policy)) then return True
+    else do
+    c <- reduction_combinations state
+    CacheState(cong, tlb_t) <- new_tlb_list $ expected_tlb_misses total
+    let new_tlb = CacheState(cong, tlb_t)
+    case (find (\(CacheState(ev, tot)) -> (evicts (CacheState(ev + cong, tot + tlb_t)) policy)) c) of
+     Just new_set -> do
+       r <- reduction_noisy new_set new_tlb policy
+       return r
+     Nothing -> do return False
+
+-- Is True when reduction is successful given a victim set and number of sets
+reduction_noisyM :: CacheState -> CacheState -> RepPolM -> IO(Bool)
+reduction_noisyM state tlb@(CacheState(0, _)) policy = do
+  r <- reductionM state policy
+  return r
+reduction_noisyM state@(CacheState(ev, total)) tlb@(CacheState(con, tlb_tot)) policy = do
+  e2 <- evictsM (CacheState(ev + con, total + tlb_tot)) policy
+  let b = (associativity == total) && (e2)
+  if b then return True
+    else do
+    c <- reduction_combinations state
+    CacheState(cong, tlb_t) <- new_tlb_list $ expected_tlb_misses total
+    let new_tlb = CacheState(cong, tlb_t)
+    e <- findM (\(CacheState(ev, tot)) -> (evictsM (CacheState(ev + cong, tot + tlb_t)) policy)) c
+    case e of
+     Just new_set -> do
+       r <- reduction_noisyM new_set new_tlb policy
+       return r
+     Nothing -> do return False
 
                        
 reduction_combinations :: CacheState -> IO([CacheState])
@@ -173,6 +115,7 @@ reduction_combinations state@(CacheState (ev, total)) = do
     n_cei = mod total (associativity + 1)
     n_trun = (associativity + 1) - n_cei
     aux = (take n_cei $ repeat cei) ++ (take n_trun $ repeat trun)
+
     
 distribute_ev :: Int -> [CacheState] -> [Int] -> IO([CacheState])
 distribute_ev 0 tups _ = do return tups
@@ -217,12 +160,12 @@ tlb_block_size = truncate $ (fromIntegral tlb_size) / (fromIntegral $ 2^tlb_bits
 
 ---------------------- Aux
 
--- Delete nth element of a list
-deleteN :: Int -> [a] -> [a]
-deleteN _ []     = []
-deleteN i (a:as)
-   | i == 0    = as
-   | otherwise = a : deleteN (i-1) as
+-- -- Delete nth element of a list
+-- deleteN :: Int -> [a] -> [a]
+-- deleteN _ []     = []
+-- deleteN i (a:as)
+--    | i == 0    = as
+--    | otherwise = a : deleteN (i-1) as
 
 -- Create n_bins combinations of 0 and 1
 bins :: Int -> [[Int]]
