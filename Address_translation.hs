@@ -57,7 +57,40 @@ probe :: Int -> [Int] -> RepPol -> Bool
 probe 0 _ _ = False
 probe _ set pol = evicts (CacheState(sum set, length set)) pol
 
+-- Naive reduction for probabilistic replacement policies
+naive_reductionM :: CacheState ->  RepPolM -> IO(Bool)
+naive_reductionM state@(CacheState(ev, total)) repPol = do
+  set <- shuffleM $ (take ev $ repeat 1) ++ (take (total - ev) $ repeat 0)
+  conflict_set <- confM set repPol
+  let s1 = sum conflict_set
+  let s2 = length conflict_set
+  r <- evictsM (CacheState (s1, s2)) repPol
+  return r
+   
+confM :: [Int] -> RepPolM -> IO([Int])
+confM set pol = do
+  r <- confM' set [] pol
+  return r
 
+confM' :: [Int] -> [Int] -> RepPolM-> IO([Int])
+confM' [] s _ = do return s
+confM' set conf_set pol = do
+  let len = length conf_set
+  r <- probeM (head set) conf_set pol
+  if r
+    then do rr <- confM' (tail set) conf_set pol
+            return rr
+    else do rr <- confM' (tail set) ((head set) : conf_set) pol
+            return rr
+
+
+probeM :: Int -> [Int] -> RepPolM -> IO(Bool)
+probeM 0 _ _ = do return False
+probeM _ set pol = do
+  r <- evictsM (CacheState(sum set, length set)) pol
+  return r
+
+  --conf' (tail set) (if r then return conf_set else return ((head set) : conf_set)) p
   
 -- Is True when reduction is succesful given a victim set and number of sets
 reduction :: CacheState -> RepPol -> IO(Bool)
