@@ -33,7 +33,7 @@ memoryRange = 24
   
 -- Save tests
 main = do
-    m <- test_complete test_binary
+    m <- test_complete test_reduction
     appendFile "results/sets/results_binary_kn_o.txt" ((list_to_string m) ++ "\n")
     --writeFile "results/sets/results_reduction_kn_5.txt" ((list_to_string m) ++ "\n")
     where list_to_string = unwords . map show
@@ -80,25 +80,16 @@ test_binary :: Int -> IO(Int)
 test_binary number = do
   v <- random_set_partial
   r <- random_cacheState v number
-  let e = evicts r lru
+  e <- evicts r lru
   return (bool_to_int e)
-  
 
+  
 -- Creates set of addresses and returns True if the reduction is successful
 test_reduction :: Int -> IO (Int)
 test_reduction number = do
   v <- random_set_partial
   r <- random_cacheState v number
-  red <- reduction r lru
-  return (bool_to_int red)
-
-
--- Creates set of addresses and returns True if the reduction is successful
-test_reductionM :: Int -> IO (Int)
-test_reductionM number = do
-  v <- random_set_partial
-  r <- random_cacheState v number
-  red <- reductionM r rr
+  red <- reduction r rr
   return (bool_to_int red)
 
   

@@ -14,11 +14,8 @@ import TestReplacementPolicies
 
 ---- Binary test
 
-evicts :: CacheState -> RepPol -> Bool
-evicts (CacheState (ev, _)) policy = (testEviction policy ev) == 1
-
-evictsM :: CacheState -> RepPolM -> IO(Bool)
-evictsM (CacheState (ev, _)) policy = do
+evicts :: CacheState -> RepPol -> IO(Bool)
+evicts (CacheState (ev, _)) policy = do
   h <- testEvictionM policy ev
   let v = h == 1
   return v
@@ -40,124 +37,73 @@ separate_sets_into_bins :: [Address] -> [Int]
 separate_sets_into_bins sets = map (\x -> (length $ filter (==x) $ map show_set sets)) $ [0..(free_cache - 1)]
 
 
--- Naive reduction
-naive_reduction :: CacheState ->  RepPol -> Bool
-naive_reduction state@(CacheState(ev, total)) repPol = evicts (CacheState (sum conflict_set, length conflict_set)) repPol
-  where set = (take ev $ repeat 1) ++ (take (total - ev) $ repeat  0)
-        conflict_set = conf set repPol
-
-conf :: [Int] -> RepPol -> [Int]
-conf set p = conf' set [] p
-
-conf' :: [Int] -> [Int] -> RepPol -> [Int]
-conf' [] s _ = s
-conf' set conf_set p = conf' (tail set) (if (probe (head set) conf_set p) then conf_set else ((head set) : conf_set)) p
-
-probe :: Int -> [Int] -> RepPol -> Bool
-probe 0 _ _ = False
-probe _ set pol = evicts (CacheState(sum set, length set)) pol
-
 -- Naive reduction for probabilistic replacement policies
-naive_reductionM :: CacheState ->  RepPolM -> IO(Bool)
-naive_reductionM state@(CacheState(ev, total)) repPol = do
+naive_reduction :: CacheState ->  RepPol -> IO(Bool)
+naive_reduction state@(CacheState(ev, total)) repPol = do
   set <- shuffleM $ (take ev $ repeat 1) ++ (take (total - ev) $ repeat 0)
-  conflict_set <- confM set repPol
+  conflict_set <- conf set repPol
   let s1 = sum conflict_set
   let s2 = length conflict_set
-  r <- evictsM (CacheState (s1, s2)) repPol
+  r <- evicts (CacheState (s1, s2)) repPol
   return r
    
-confM :: [Int] -> RepPolM -> IO([Int])
-confM set pol = do
-  r <- confM' set [] pol
+conf :: [Int] -> RepPol -> IO([Int])
+conf set pol = do
+  r <- conf' set [] pol
   return r
 
-confM' :: [Int] -> [Int] -> RepPolM-> IO([Int])
-confM' [] s _ = do return s
-confM' set conf_set pol = do
+conf' :: [Int] -> [Int] -> RepPol-> IO([Int])
+conf' [] s _ = do return s
+conf' set conf_set pol = do
   let len = length conf_set
-  r <- probeM (head set) conf_set pol
+  r <- probe (head set) conf_set pol
   if r
-    then do rr <- confM' (tail set) conf_set pol
+    then do rr <- conf' (tail set) conf_set pol
             return rr
-    else do rr <- confM' (tail set) ((head set) : conf_set) pol
+    else do rr <- conf' (tail set) ((head set) : conf_set) pol
             return rr
 
-
-probeM :: Int -> [Int] -> RepPolM -> IO(Bool)
-probeM 0 _ _ = do return False
-probeM _ set pol = do
-  r <- evictsM (CacheState(sum set, length set)) pol
+probe :: Int -> [Int] -> RepPol -> IO(Bool)
+probe 0 _ _ = do return False
+probe _ set pol = do
+  r <- evicts (CacheState(sum set, length set)) pol
   return r
-
-  --conf' (tail set) (if r then return conf_set else return ((head set) : conf_set)) p
   
--- Is True when reduction is succesful given a victim set and number of sets
+-- Is True when reduction is succesful given a victim set and number of sets -- For probabilistic replacement policies
 reduction :: CacheState -> RepPol -> IO(Bool)
 reduction state@(CacheState(ev, total)) policy = do
-  if ((associativity == total) && (evicts state policy)) then return True
+  e2 <- evicts state policy
+  let b = (associativity == total) && (e2)
+  if b then return True
     else do
       c <- reduction_combinations state
-      case (find (\x -> evicts x policy) c) of
+      e <- findM (\x -> evicts x policy) c
+      case e of
         Just new_state -> do
           r <- reduction new_state policy
           return r
         Nothing -> do return False
-        
--- Is True when reduction is succesful given a victim set and number of sets -- For probabilistic replacement policies
-reductionM :: CacheState -> RepPolM -> IO(Bool)
-reductionM state@(CacheState(ev, total)) policy = do
-  e2 <- evictsM state policy
-  let b = (associativity == total) && (e2)
-  if b then return True
-    else do
-      c <- reduction_combinations state
-      e <- findM (\x -> evictsM x policy) c
-      case e of
-        Just new_state -> do
-          r <- reductionM new_state policy
-          return r
-        Nothing -> do return False
 
-        
 -- Is True when reduction is successful given a victim set and number of sets
-reduction_noisy :: CacheState -> CacheState -> RepPol ->  IO(Bool)
+reduction_noisy :: CacheState -> CacheState -> RepPol -> IO(Bool)
 reduction_noisy state tlb@(CacheState(0, _)) policy = do
   r <- reduction state policy
   return r
 reduction_noisy state@(CacheState(ev, total)) tlb@(CacheState(con, tlb_tot)) policy = do
-  if ((associativity == total) && (evicts (CacheState(ev + con, total + tlb_tot)) policy)) then return True
-    else do
-    c <- reduction_combinations state
-    CacheState(cong, tlb_t) <- new_tlb_list $ expected_tlb_misses total
-    let new_tlb = CacheState(cong, tlb_t)
-    case (find (\(CacheState(ev, tot)) -> (evicts (CacheState(ev + cong, tot + tlb_t)) policy)) c) of
-     Just new_set -> do
-       r <- reduction_noisy new_set new_tlb policy
-       return r
-     Nothing -> do return False
-
--- Is True when reduction is successful given a victim set and number of sets
-reduction_noisyM :: CacheState -> CacheState -> RepPolM -> IO(Bool)
-reduction_noisyM state tlb@(CacheState(0, _)) policy = do
-  r <- reductionM state policy
-  return r
-reduction_noisyM state@(CacheState(ev, total)) tlb@(CacheState(con, tlb_tot)) policy = do
-  e2 <- evictsM (CacheState(ev + con, total + tlb_tot)) policy
+  e2 <- evicts (CacheState(ev + con, total + tlb_tot)) policy
   let b = (associativity == total) && (e2)
   if b then return True
     else do
     c <- reduction_combinations state
     CacheState(cong, tlb_t) <- new_tlb_list $ expected_tlb_misses total
     let new_tlb = CacheState(cong, tlb_t)
-    e <- findM (\(CacheState(ev, tot)) -> (evictsM (CacheState(ev + cong, tot + tlb_t)) policy)) c
+    e <- findM (\(CacheState(ev, tot)) -> (evicts (CacheState(ev + cong, tot + tlb_t)) policy)) c
     case e of
      Just new_set -> do
-       r <- reduction_noisyM new_set new_tlb policy
+       r <- reduction_noisy new_set new_tlb policy
        return r
      Nothing -> do return False
-
-                       
+     
 reduction_combinations :: CacheState -> IO([CacheState])
 reduction_combinations state@(CacheState (ev, total)) = do
   r <- distribute_ev ev (map (\x -> CacheState (0, x)) aux) [0..associativity]
@@ -170,7 +116,6 @@ reduction_combinations state@(CacheState (ev, total)) = do
     n_cei = mod total (associativity + 1)
     n_trun = (associativity + 1) - n_cei
     aux = (take n_cei $ repeat cei) ++ (take n_trun $ repeat trun)
-
     
 distribute_ev :: Int -> [CacheState] -> [Int] -> IO([CacheState])
 distribute_ev 0 tups _ = do return tups
@@ -192,8 +137,6 @@ change s tups =
     CacheState(_, 0) -> Nothing
     CacheState(ev, total) ->
       Just ((take s tups) ++ [CacheState(ev + 1, total - 1)] ++ (drop (s + 1) tups))
-  
-
 
 ---- TLB
 -- TLB misses for a set of addresses
