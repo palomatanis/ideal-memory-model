@@ -16,9 +16,8 @@ import TestReplacementPolicies
 
 evicts :: CacheState -> RepPol -> IO(Bool)
 evicts (CacheState (ev, _)) policy = do
-  h <- testEvictionM policy ev
-  let v = h == 1
-  return v
+  h <- testEviction policy ev
+  return h
 
 -- Is there at least one eviction set
 exists_eviction :: [Address] -> Bool
@@ -73,7 +72,7 @@ probe _ set pol = do
 reduction :: CacheState -> RepPol -> IO(Bool)
 reduction state@(CacheState(ev, total)) policy = do
   e2 <- evicts state policy
-  let b = (associativity == total) && (e2)
+  let b = (associativity <= total) && (e2)
   if b then return True
     else do
       c <- reduction_combinations state

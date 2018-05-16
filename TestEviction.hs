@@ -16,10 +16,10 @@ numberAddrToTest_From :: Int
 numberAddrToTest_From = 0
 
 numberAddrToTest_To :: Int
-numberAddrToTest_To = 6000
+numberAddrToTest_To = 4000
 
 iterations :: Int
-iterations = 50
+iterations = 1
 -- iterations = 1000
 
 memoryRange :: Int
@@ -34,7 +34,7 @@ memoryRange = 24
 -- Save tests
 main = do
     m <- test_complete test_reduction
-    appendFile "results/sets/results_binary_kn_o.txt" ((list_to_string m) ++ "\n")
+    appendFile "results/sets/lru_reduction" ((list_to_string m) ++ "\n")
     --writeFile "results/sets/results_reduction_kn_5.txt" ((list_to_string m) ++ "\n")
     where list_to_string = unwords . map show
           
@@ -89,6 +89,7 @@ test_reduction :: Int -> IO (Int)
 test_reduction number = do
   v <- random_set_partial
   r <- random_cacheState v number
+  putStrLn $ show r
   red <- reduction r rr
   return (bool_to_int red)
 
