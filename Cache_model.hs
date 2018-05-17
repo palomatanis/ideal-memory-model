@@ -1,30 +1,44 @@
-module ReplacementPolicies where
+module Cache_model  where
+
+import System.Random
+import System.Random.Shuffle
 
 import Data.List
-import System.Random
+import Data.List.Split
+
 import Data.Random
 
+import Base
+import Address_creation
 
-associativity :: Int
-associativity = 16
 
-data SetAddress = SetAddress Int
-  deriving (Read, Show, Eq)
-  
-data Trace = Trace [SetAddress]
-  deriving (Read, Show, Eq)
+---- Binary test
 
-data Set = Set [SetAddress]
-  deriving (Read, Show, Eq)
+-- Is there at least one eviction set
+exists_eviction :: [Address] -> Bool
+exists_eviction add = (number_of_eviction_sets add) > 0
 
-data HitNumber = Hit Int
-  deriving (Read, Show, Eq)
+-- Count number of addresses in eviction sets
+number_of_eviction_addresses :: [Address] -> Int
+number_of_eviction_addresses = sum . filter (> associativity) . separate_sets_into_bins
 
--- data BTree = Tree (Node Bin, Tree BTree, Tree BTree) | Tree (Node Bin, Leaf SetAddress, Leaf SetAddress)
---   deriving (Read, Show, Eq)
+-- Returns number of eviction sets for a list of sets
+number_of_eviction_sets :: [Address] -> Int
+number_of_eviction_sets = length . filter (> associativity) . separate_sets_into_bins
 
-data Bin = Zero | One
 
+
+---- TLB
+-- TLB misses for a set of addresses
+tlb_misses :: [Int] -> Int
+tlb_misses = sum . map (\x -> x - tlb_block_size) . filter (> tlb_block_size) . tlb_misses'
+  where
+    tlb_misses' tlbs = map (\x -> length $ filter (== x) tlbs) [0..((2^tlb_bits) - 1)]
+    
+tlb_block_size :: Int
+tlb_block_size = truncate $ (fromIntegral tlb_size) / (fromIntegral $ 2^tlb_bits)
+
+---- REPLACEMENT POLICIES
 
 type RepPol = Set -> Trace -> IO(Set, HitNumber)
 
@@ -164,34 +178,9 @@ bip' (Trace trace, Set set, Hit hit) =
             else bip'(Trace (tail trace), Set (init set ++ [h]), Hit hit)
   where h = head trace
 
--- plru :: Set -> Trace -> (Set, HitNumber)
--- plru trace = (s, h)
---   where (t, s, h) = plru'(trace, initialSet, Hit 0)
 
--- plru' :: (Trace, Set, HitNumber) -> (Trace, Set, HitNumber)
--- plru' i@(Trace [], _, _) = i
--- plru' (Trace trace, Set set, Hit hit) =
---   case (elemIndex h set) of
---     Just elem -> plru'(Trace (tail trace), Set(h : (deleteN elem set)), Hit (hit + 1))
---     Nothing -> plru'(Trace (tail trace), Set(h : init set), Hit hit)
---   where h = head trace
+---- Aux
 
-  
--------------------------------------
--- Receives probability (out of 64) and throws a coin with that prob
-chance64 :: Int -> IO(Bool)
-chance64 nu = do
-  let distr = (take nu $ repeat True) ++ (take (64 - nu) $ repeat False)
-  r <- sample $ randomElement distr
-  return r
-  
-initialSet :: Set
-initialSet = Set (map SetAddress $ take associativity $ repeat 0)
-
-
--- Delete nth element of a list
-deleteN :: Int -> [a] -> [a]
-deleteN _ []  = []
-deleteN i (a:as)
-   | i == 0    = as
-   | otherwise = a : deleteN (i-1) as
+-- Takes list of sets and outputs the histogram
+separate_sets_into_bins :: [Address] -> [Int]
+separate_sets_into_bins sets = map (\x -> (length $ filter (==x) $ map show_set sets)) $ [0..(free_cache - 1)]
