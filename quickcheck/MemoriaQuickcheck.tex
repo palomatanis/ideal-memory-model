@@ -1,0 +1,72 @@
+\documentclass[11pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{graphicx}
+\usepackage{grffile}
+\usepackage{longtable}
+\usepackage{wrapfig}
+\usepackage{rotating}
+\usepackage[normalem]{ulem}
+\usepackage{amsmath}
+\usepackage{textcomp}
+\usepackage{amssymb}
+\usepackage{capt-of}
+\usepackage{hyperref}
+
+\usepackage{appendix}
+
+\usepackage{titling}
+
+\setlength{\droptitle}{-5em}
+
+\author{Paloma Pedregal Helft}
+\date{}
+\title{Quickcheck: Property testing in Haskell}
+
+\bibliographystyle{plain}
+\begin{document}
+
+\maketitle
+
+\vspace{150px}
+
+\tableofcontents
+
+\clearpage
+
+\section{Introduction}
+
+This document is the report for the final proyect of the course \textit{Analysis of Concurrent Systems}.
+The proyect's objective was to test a program using \textbf{Quickcheck}, a library for property testing.\\
+
+The process started by writing a Haskell program. In this case, the program is a model of computer microarchitecture for studying different aspects of side-channel cache attacks.
+
+After writing the program, the second step was listing the properties of the program, and the third implementing them in Quickcheck and testing the program.
+
+This document consists of a first section explaining the program, a second with the properties and implementation of the tests, and finally a section with the results of the tests and a conclusion.
+
+\clearpage
+
+\section{A cache model in Haskell}
+
+The program on which the tests were performed is a model of some parts of the microarchitecture of computers: Caches, different replacement policies, translation lookaside buffer (tlb). The model's objective is to study and reason about aspects of side-channel cache attacks.
+
+\subsection{A primer on caches}
+
+\clearpage
+
+\section{Property testing}
+
+\clearpage
+
+\section{Results and conclusion}
+
+\clearpage
+
+\addcontentsline{toc}{section}{References}
+\bibliography{bibliographyQuickcheck}
+
+\clearpage
+
+
+\end{document}
