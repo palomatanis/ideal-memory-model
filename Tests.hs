@@ -11,7 +11,7 @@ import System.IO
 import Data.List
 
 -- media de 1000 repeticiones
--- entre 0 y 4000 direcciones. intervalo asociatividad
+-- entre 0 y 4000 direcciones. interval 2*associativity
 
 numberAddrToTest_From :: Int
 numberAddrToTest_From = 0
@@ -20,7 +20,7 @@ numberAddrToTest_To :: Int
 numberAddrToTest_To = 4000
 
 iterations :: Int
-iterations = 100
+iterations = 50
 -- iterations = 1000
 
 memoryRange :: Int
@@ -28,17 +28,15 @@ memoryRange = 24
   
 -- Save tests
 main = do
-    m <- test_complete $ test_reduction naive_reduction lru
-    writeFile "results/sets/lru_reduction_naive" ((unwords $ map show m) ++ "\n")
-          
-test_complete test = do
-  p <- mapM (do_test_of test) [numberAddrToTest_From, (numberAddrToTest_From + (2*associativity))..numberAddrToTest_To]
-  return p
-
-do_test_of f n = do
-  p <- replicateM iterations $ f n
-  return (mean p)
-
+    m <- test_complete $ test_reduction reduction lru
+    writeFile "results/lru_reduction_new_noisy_changed_par_2" ((unwords $ map show m) ++ "\n")
+    where
+      test_complete test = do
+        p <- mapM (do_test_of test) [numberAddrToTest_From, (numberAddrToTest_From + (2*associativity))..numberAddrToTest_To]
+        return p
+      do_test_of f n = do
+        p <- replicateM iterations $ f n
+        return (mean p)
 
 -- Creates set of addresses and returns True if the reduction is successful
 test_reduction :: ReductionAlgorithm -> RepPol -> Int -> IO (Int)

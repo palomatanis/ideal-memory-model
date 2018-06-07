@@ -44,17 +44,20 @@ physical_address_length = 34
 
 -- Bits of page index , between 0 and addressLength
 pageOffset :: Int
-pageOffset = 12
+-- pageOffset = 12
+pageOffset = 5
 
 ----- Cache
 
 -- Number of offset bits (n bits for blocks of 2^n)
 cacheOffset :: Int
-cacheOffset = 6
+-- cacheOffset = 6
+cacheOffset = 3
 
 -- Number of bits for set (s bits for 2^s sets)
 cacheSet :: Int
-cacheSet = 13
+-- cacheSet = 13
+cacheSet = 9
 
 -- Actual number of cache bits that can change
 free_cache_bits :: Int
@@ -70,9 +73,9 @@ associativity = 16
 ------ TLB
 -- Has to be multiple of tlb associativity
 tlb_size :: Int
-tlb_size = 1536
+tlb_size = 150
 
--- TLB associativity (bits for tlb associativity)
+-- TLB associativity (bits for tlb associativity) -> 2 means assoc 4
 tlb_bits :: Int
 tlb_bits = 2
 

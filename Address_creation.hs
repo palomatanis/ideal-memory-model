@@ -34,14 +34,20 @@ list_random_tlb number = replicateM number $ randomRIO(0, ((2^tlb_bits) - 1))
 -- Creates cache state with as many congruent addresses as tlb misses
 new_tlb_list :: Int -> IO(CacheState)
 new_tlb_list number = do
-  r <- new_tlb_list' number 0
+  r <- tlb_congruent number
   return (CacheState (r, number))
+  
+
+tlb_congruent :: Int -> IO(Int)
+tlb_congruent n = do
+  r <- tlb_congruent' n 0
+  return r
   where
-    new_tlb_list' 0 acc = do return acc
-    new_tlb_list' n acc = do
+    tlb_congruent' 0 acc = do return acc
+    tlb_congruent' n acc = do
       r <- random_set
       let comp = r == (Address 0)
-      rr <- new_tlb_list' (n-1) (if comp then (acc+1) else acc)
+      rr <- tlb_congruent' (n-1) (if comp then (acc+1) else acc)
       return rr
 
 

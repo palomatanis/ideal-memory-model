@@ -38,10 +38,32 @@ tlb_misses = sum . map (\x -> x - tlb_block_size) . filter (> tlb_block_size) . 
 tlb_block_size :: Int
 tlb_block_size = truncate $ (fromIntegral tlb_size) / (fromIntegral $ 2^tlb_bits)
 
----- REPLACEMENT POLICIES
 
+---- REPLACEMENT POLICIES
 type RepPol = Set -> Trace -> IO(Set, HitNumber)
 
+noise = False
+
+-- Calls the replacement policy with/without noise
+cacheInsert :: RepPol -> Set -> Trace -> Int -> IO(Set, HitNumber)
+cacheInsert policy set tr@(Trace t) total = do
+  case noise of
+    True -> do
+      ev <- tlb_congruent (expected_tlb_misses total)
+      let n = length t
+      let new_trace = (Trace (t ++ (map SetAddress [n..(n+ev-1)])))
+      r <- policy set new_trace
+      return r
+    False -> do
+      r <- policy set tr
+      return r
+  
+-- Expected number of misses for a number of addresses
+expected_tlb_misses :: Int -> Int
+expected_tlb_misses n =
+  let d = n - tlb_size
+  in if d > 0 then d else 0
+  
  -- Least recently used
 lru :: RepPol
 lru set trace = do
