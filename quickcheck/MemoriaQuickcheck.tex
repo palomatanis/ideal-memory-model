@@ -12,6 +12,7 @@
 \usepackage{amssymb}
 \usepackage{capt-of}
 \usepackage{hyperref}
+\usepackage{enumitem}
 
 \usepackage{appendix}
 
@@ -28,7 +29,7 @@
 
 \maketitle
 
-\vspace{150px}
+\vspace{130px}
 
 \tableofcontents
 
@@ -39,26 +40,125 @@
 This document is the report for the final proyect of the course \textit{Analysis of Concurrent Systems}.
 The proyect's objective was to test a program using \textbf{Quickcheck}, a library for property testing.\\
 
-The process started by writing a Haskell program. In this case, the program is a model of computer microarchitecture for studying different aspects of side-channel cache attacks.
+The first part of the proyect was writiting a Haskell program. In this case, the program is a model of computer microarchitecture for studying different aspects of side-channel cache attacks.
 
-After writing the program, the second step was listing the properties of the program, and the third implementing them in Quickcheck and testing the program.
+After writing the program, the second step was listing the properties of the program, and the third implementing them in Quickcheck and testing the program.\\
 
-This document consists of a first section explaining the program, a second with the properties and implementation of the tests, and finally a section with the results of the tests and a conclusion.
+This document consists of a first section with a background on caches, side channel attacks and the implementation of the program, a second with the properties and implementation of the tests, and finally a section with the results of the tests and a conclusion.
 
 \clearpage
 
 \section{A cache model in Haskell}
 
-The program on which the tests were performed is a model of some parts of the microarchitecture of computers: Caches, different replacement policies, translation lookaside buffer (tlb). The model's objective is to study and reason about aspects of side-channel cache attacks.
+The program on which the tests were performed is a model of some parts of the microarchitecture of computers: Caches, different replacement policies, translation lookaside buffer (TLB). The model's objective is to study and reason about aspects of side-channel cache attacks.\\
 
 \subsection{A primer on caches}
 
+Caches are very small and very fast memories that work as buffer between the slower memory of a computer and the very fast processor. Data is logically partitioned into a set of \emph{blocks}. If a block has to be accessed, it first has to be determined whether that block is already in the cache.
+
+If it is, there is a \textbf{cache hit}. In this case it can be accessed without further delay. Otherwise, there is a \textbf{cache miss}, and the block has to be fetched from memory, which is very expensive timewise. \\
+
+Caches are partitioned in equally sized \emph{cache sets}. The number of lines in each cache set is called \emph{associativity}.\\
+
+When there is a cache miss and a new block is fetched, this block has to evict and replace a block already in the cache. In order to choose which block to replace, there has to be a \emph{cache replacement policy}.
+
+The most common are least-recently used (\textbf{LRU}), first-in first-out (\textbf{FIFO}), or pseudo-lru (\textbf{PLRU}).
+
+Nowadays, replacement policies are increasingly complex, usually undocumented, and sometimes variable depending on the cache set \cite{jaleel2010high, wong2015intel}.\\
+
+Where a memory block is mapped to a certain region of the cache because of the \textbf{physical address} of its contents: a memory address has a physical address that is known by the operating system, but not by any program on the computer. Usually programs only have access to the \textbf{virtual address} space. The virtual address space is a construction that allows an application to have a linear and infinite address space, isolated from other processes, even if the physical addresses are fragmented, or divided between main memory and storage.\\
+
+The translation between virtual and physical addresses is performed by the \emph{Memory Management Unit} (\emph{MMU}). Within this MMU, there is a small cache for address translation called the \emph{Translation Lookaside Buffer}, the \textbf{TLB}. When a virtual address is accessed, the MMU has to find the translation. If it is not in the TLB, then there is a TLB miss, and the MMU has to do a \emph{page walk} to fetch the new address. This process causes some blocks to be introduced in the cache.\\
+
+\subsection{A primer on side-channel cache attacks}
+
+There are a series of effective attacks that exploit shared CPU caches \cite{liu2015last, yarom2014flush}
+
+A very simplified idea of an attack would be the following:
+\begin{itemize}
+\item[--] The adversary fills a cache with their own data
+\item[--] A victim that shares the same cache access a secret
+\item[--] The attacker accesses their data again, measuring the access times. If the access is slow, then there has been a cache miss. This means that the victim has accessed that part of the cache. A fast access implies that the data is still in the cache and therefore has not been evicted by the victim
+\end{itemize}
+
+By knowing wich cache sets have been accessed, the adversary could learn the secret of the victim.\\
+
+Traditionally, a set of addresses used to replace content in the cache is called an \textbf{eviction set}. In this case, we are defining an eviction set as a set of virtual addresses, of size at least associativity, and that are \textbf{congruent}. Congruent addresses are addresses that are mapped to the same cache set.
+
+Associativity is the size needed, because that is the number of blocks that can be stored in each single cache set.\\
+
+Accessing a very large set of addresses can be enough for evicting any content out of the cache, however, it is impractical to use such big sets. The ideal would be to have a set with \emph{only} congruent addresses.\\
+
+One of the main goals of the Haskell model is to study different \emph{reduction algorithms}. These are algorithms that take a large set of addresses and reduce the set to a \emph{minimal eviction set}, an eviction set of size associativity.\\
+
+\subsection{A Haskell microachitecture model}
+
+The goal of the model is to study different security aspects of caches.
+
+The sets of addresses are represented in two different ways:
+
+\begin{itemize}
+\item[--] For distribution of addresses across multiple cache sets, addresses are represented with the type \texttt{Address}. Each of those is an Int that represent the cache set number of the address.
+
+A set of addresses is represented as a list of Addresses: \texttt{[Address]}
+
+\item[--] When there is only one objective set, like in the reduction algorithm, the only information needed is the total number of addresses in the set, and how many of them are congruent with the objective set.
+
+  The representation of those set is done with the type \texttt{CacheState} that represents a tuple of Ints for the number of congruent addresses and the total number of addresses: \texttt{CacheState(Congruent, Total)}
+\end{itemize}
+
+There are generators of random sets of addresses of a certain length as well as of CacheStates.
+
+There are two different implementation of reductions, as well as different replacement policies and the TLB.
 \clearpage
 
 \section{Property testing}
+Quickcheck for Haskell is a library for random testing properties of Haskell programs \cite{claessen2011quickcheck, qc1, qc2, qc3}
+
+\subsection{Defining the properties of the program}
+In order to test the program, it is first necessary to define its properties:
+\begin{itemize}[label=--]
+\item A generated set of Addresses of $n$ elements are of length $n$
+\item A generated set of Addresses have only addresses represented by cache sets in the correct range [0, free cache sets - 1]
+\item A generated CacheState with $n$ addresses are of the form \texttt{CacheState(c, n)} where c is between 0 and $n$
+\item The number of tlb misses for $n$ addresses are between 0 and $n$
+\item A generated TLBState with $n$ addresses are of the form \texttt{CacheState(c, m)} where $m$ is the number of estimated cache misses for $n$ and $c$ is between 0 and $m$
+\item The group reduction suceeds when there are associativity many addresses or more
+\item The group reduction fails when there are less than associativity addresses
+\item The group reduction ends with exactly associativity addresses
+\item The group reduction ends with associativity congruent addresses
+\item The linear reduction suceeds when there are associativity many addresses or more
+\item The linear reduction fails when there are less than associativity addresses
+\item The linear reduction ends with exactly associativity addresses
+\item The linear reduction ends with associativity congruent addresses
+\item A replacement policy executed with an empty trace does not change the cache state, for all replacement policies
+\item A replacement policy executed with a trace of one address on a cache state with that address produces a hit
+\item An eviction test with less than associativity does not succeed in LRU
+\item An eviction test with associativity or more addresses suceeds in LRU
+\item An eviction test executed with a trace of only two identical addresses is evicting for any replacement policy
+\end{itemize}
 
 \clearpage
+\subsection{Implementation of the tests}
+\subsubsection{Generators}
+The generator of addresses generates random addresses of type \texttt{Address} within the range
+\begin{verbatim}
+instance Arbitrary Address where
+  arbitrary = do
+    a <- choose(0, free_cache - 1)
+    return $ Address a
+\end{verbatim}
 
+The cache state generator creates structures of type \texttt{CacheState} with a number of congruent addresses equal or smaller to number of total addresses (which must be a positive number or 0)
+\begin{verbatim}
+instance Arbitrary CacheState where
+  arbitrary = do
+    NonNegative total <- arbitrary
+    congruent <- choose (0, total)
+    return $ CacheState(congruent, total)
+\end{verbatim}
+
+\subsubsection{Properties}
 \section{Results and conclusion}
 
 \clearpage
