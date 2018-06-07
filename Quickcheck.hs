@@ -17,7 +17,21 @@ instance Arbitrary CacheState where
     NonNegative total <- arbitrary
     congruent <- choose (0, total)
     return $ CacheState(congruent, total)
+    
+instance SetAddress where
+  arbitrary = do
+    n <- Arbitrary
+    return $ SetAddress n
+    
+instance Arbitrary Trace where
+  arbitrary = do
+    l <- listOf SetAddress
+    return $ Trace l
 
+instance Arbitrary Set where
+  arbitrary = do
+    l <- listOf SetAddress
+    return $ Set l
 ---- Propiedades de los generadores
 
 --  List of addresses returns an address of the correct size for partial set list
@@ -70,6 +84,11 @@ prop_evicts cacheState@(CacheState(congr, total)) = monadicIO $ do
   if (congr >= associativity)
     then assert e
     else assert $ not e  
+
+prop_rep_empty_trace :: Set -> Property
+prop_rep_empty_trace set = monadicIO $ do
+  (s, h) <- cacheInsert lru set (Trace 0)
+  assert $ s == set
 
 -- Group reduction succeeds when there are associativity or more congruent addresses
 prop_group_reduction_bool :: CacheState -> Property

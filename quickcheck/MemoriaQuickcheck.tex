@@ -159,7 +159,118 @@ instance Arbitrary CacheState where
 \end{verbatim}
 
 \subsubsection{Properties}
+The properties described above were tested with different functions. Some of them are here, the rest are in the file \texttt{Quickcheck.hs}.
+
+The following property tests that the generator of addresses returns a set of address of the correct size
+\begin{verbatim}
+prop_address_list_size :: (NonNegative Int) -> Property
+prop_address_list_size (NonNegative n) = monadicIO $ do
+  l <- run $ list_random_sets n random_set
+  let lenl = length l
+  assert $ lenl == n
+\end{verbatim}
+The parameter, the length of the list has to be an Integer equal or greater than 0. Then the property asserts that the generator does create a list of that size.\\
+
+This next test test that the generators only creates sets where the addresses are in the correct range of cache sets
+
+\begin{verbatim}
+prop_address_list_range :: (Positive Int) -> Property
+prop_address_list_range (Positive n) = monadicIO $ do
+  l <- run $ list_random_sets n random_set
+  let max = maximum $ map (\(Address i) -> i) l
+  let min = minimum $ map (\(Address i) -> i) l
+  assert $ max < (2^cacheSet) && (min >= 0)
+\end{verbatim}
+
+This first two tests are repeated for other generators.\\
+
+Following, the calculated number of TLB misses for a trace of length $n$ must be in the range of [0, n]
+
+\begin{verbatim}
+prop_tlb_misses :: (NonNegative Int) -> Property
+prop_tlb_misses (NonNegative n) = monadicIO $ do
+  r <- run $ list_random_tlb n
+  let t = tlb_misses r
+  assert $ (t <= n) && (t >= 0)
+\end{verbatim}
+
+This test verifies that when a CacheState is randomly generated, the values are within correct ranges
+\begin{verbatim}
+-- Cache state created is of right size
+prop_make_cache_state_size :: (NonNegative Int) -> Property
+prop_make_cache_state_size (NonNegative n) = monadicIO $ do
+  CacheState(c, t) <- run $ random_cacheState n
+  assert $ (t == n) && (c <= t) && (c >= 0)
+\end{verbatim}
+
+The test continue with the eviction test. This test tries to introduce victim address in the cache, then accesses all the set of addresses (CacheState) and tries to access the victim again. If the set is evicting, then the eviction is successful.
+
+It should be successful when there are at least associativity many addresses in CacheState.
+\begin{verbatim}
+prop_evicts :: CacheState -> Property
+prop_evicts cacheState@(CacheState(congr, total)) = monadicIO $ do
+  e <- run $ evicts cacheState lru
+  if (congr >= associativity)
+    then assert e
+    else assert $ not e  
+\end{verbatim}
+
+The following test tests that when an empty trace is inserted in a cache set, the content remains the same.
+\begin{verbatim}
+prop_rep_empty_trace :: Set -> Property
+prop_rep_empty_trace set = monadicIO $ do
+  (s, h) <- cacheInsert lru set (Trace 0)
+  assert $ s == set
+\end{verbatim}
+
+These last two properties are for reduction and are for all replacement policies.
+
+The first checks that when the replacement policy receives as imput a cache state where there are at least associativity many addresses, the reduction succeeds.
+
+\begin{verbatim}
+prop_group_reduction_bool :: CacheState -> Property
+prop_group_reduction_bool cacheState@(CacheState(congr, total)) = monadicIO $ do
+  r <- run $ reduction cacheState lru
+  if (congr >= associativity)
+    then assert r
+    else assert $ not r
+\end{verbatim}
+
+The second tests that the output of the reduction is CacheState(associativity, associativity) if it succeeds or else its the input.
+\begin{verbatim}
+prop_group_reduction :: CacheState -> Property
+prop_group_reduction cacheState@(CacheState(congr, total)) = monadicIO $ do
+  CacheState(c, t) <- run $ reduction_b cacheState lru
+  if (congr >= associativity)
+    then assert $ (c == t) && (t == associativity)
+    else assert $ (c == congr) && (t == total)
+\end{verbatim}
+
+Finally all the tests are run from the main, trying 100 tests for each of the implemented properties.
+\begin{verbatim}
+main :: IO ()
+main = do
+  putStrLn "Created list of addresses is correct size 1"
+  quickCheck prop_address_list_size_partial
+  
+  putStrLn "Created list of addresses is correct size 2"
+  quickCheck prop_address_list_size
+
+.
+.
+.
+(etc)
+\end{verbatim}
+
+\clearpage
 \section{Results and conclusion}
+The properties were a very good way of not only testing the already implemented program but also an interesting way of reasoning about the implementation.
+
+There was a mistake in the code, that made one of the reduction algorithms terminate with a set with more than associativity addresses that has been found and fixed thanks to this testing.\\
+
+At this moment, the implementation of the program succeeds on all the tests.\\
+
+Quickcheck has definately proven its usefulness, and testing properties of a program is a much better solution than other kinds of testing, like unit testing. Its easy to use, and defining the properties of a program, independently of the actual testing, is a way of reasoning about what the implementation is doing vs. how it should be.
 
 \clearpage
 
