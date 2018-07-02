@@ -7,19 +7,19 @@ data Address = Address Int
   deriving (Read, Show, Eq)
 
 -- The cache state is represented by the number of addresses in the victim set, and the total number of addresses
-data CacheState = CacheState(Int, Int)
+data SetState = SetState(Int, Int)
   deriving (Read, Show, Eq)
 
 -- Congruent addresses, represented with numbers to distinguist each different address
-data SetAddress = SetAddress Int
+data SetIdentifier = SetIdentifier Int
   deriving (Read, Show, Eq)
 
 -- List of congruent addresses that are going to be inserted to a cache
-data Trace = Trace [SetAddress]
+data Trace = Trace [SetIdentifier]
   deriving (Read, Show, Eq)
 
 -- Content of a cache set, represented as the list of addresses inside it
-data Set = Set [SetAddress]
+data Set = Set [SetIdentifier]
   deriving (Read, Show, Eq)
 
 -- Number of hits after a trace is put inside a cache
@@ -44,20 +44,20 @@ physical_address_length = 34
 
 -- Bits of page index , between 0 and addressLength
 pageOffset :: Int
--- pageOffset = 12
-pageOffset = 5
+pageOffset = 12
+
 
 ----- Cache
 
 -- Number of offset bits (n bits for blocks of 2^n)
 cacheOffset :: Int
--- cacheOffset = 6
-cacheOffset = 3
+cacheOffset = 6
+
 
 -- Number of bits for set (s bits for 2^s sets)
 cacheSet :: Int
--- cacheSet = 13
-cacheSet = 9
+cacheSet = 13
+
 
 -- Actual number of cache bits that can change
 free_cache_bits :: Int
@@ -73,7 +73,7 @@ associativity = 16
 ------ TLB
 -- Has to be multiple of tlb associativity
 tlb_size :: Int
-tlb_size = 150
+tlb_size = 1536
 
 -- TLB associativity (bits for tlb associativity) -> 2 means assoc 4
 tlb_bits :: Int

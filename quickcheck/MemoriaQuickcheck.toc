@@ -1,4 +1,12 @@
 \contentsline {section}{\numberline {1}Introduction}{2}{section.1}
 \contentsline {section}{\numberline {2}A cache model in Haskell}{3}{section.2}
-\contentsline {section}{\numberline {3}Property testing}{4}{section.3}
-\contentsline {section}{\numberline {4}Results and conclusion}{5}{section.4}
+\contentsline {subsection}{\numberline {2.1}A primer on caches}{3}{subsection.2.1}
+\contentsline {subsection}{\numberline {2.2}A primer on side-channel cache attacks}{4}{subsection.2.2}
+\contentsline {subsection}{\numberline {2.3}A Haskell microachitecture model}{5}{subsection.2.3}
+\contentsline {section}{\numberline {3}Property testing}{6}{section.3}
+\contentsline {subsection}{\numberline {3.1}Defining the properties of the program}{6}{subsection.3.1}
+\contentsline {subsection}{\numberline {3.2}Implementation of the tests}{8}{subsection.3.2}
+\contentsline {subsubsection}{\numberline {3.2.1}Generators}{8}{subsubsection.3.2.1}
+\contentsline {subsubsection}{\numberline {3.2.2}Properties}{8}{subsubsection.3.2.2}
+\contentsline {section}{\numberline {4}Results and conclusion}{11}{section.4}
+\contentsline {section}{References}{12}{section.4}

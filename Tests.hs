@@ -20,16 +20,19 @@ numberAddrToTest_To :: Int
 numberAddrToTest_To = 4000
 
 iterations :: Int
-iterations = 50
+iterations = 100
 -- iterations = 1000
 
 memoryRange :: Int
 memoryRange = 24
+
+
+-- m <- test_complete $ test_reduction reduction lru
   
 -- Save tests
 main = do
-    m <- test_complete $ test_reduction reduction lru
-    writeFile "results/lru_reduction_new_noisy_changed_par_2" ((unwords $ map show m) ++ "\n")
+  m <- test_complete $ test_reduction naive_reduction rr
+  writeFile "results/linearreduction_noisy_rr" ((unwords $ map show m) ++ "\n")
     where
       test_complete test = do
         p <- mapM (do_test_of test) [numberAddrToTest_From, (numberAddrToTest_From + (2*associativity))..numberAddrToTest_To]
@@ -43,7 +46,7 @@ test_reduction :: ReductionAlgorithm -> RepPol -> Int -> IO (Int)
 test_reduction reduction_alg pol number = do
   r <- random_cacheState number
   red <- reduction_alg r pol
-  return (bool_to_int red)
+  return (maybe_to_int red)
   
 -- Counts TLB misses for a number of addresses
 count_tlb_misses :: Int -> IO(Int)
@@ -55,7 +58,7 @@ count_tlb_misses number = do
 -- Creates set of number addresses and counts eviction sets
 test_count_evictions :: Int -> IO(Int)
 test_count_evictions number = do
-  r <- list_random_sets number random_set_partial
+  r <- list_random_sets number random_set_partial 
   return (number_of_eviction_sets r)
 
 -- test pol = do
@@ -80,7 +83,7 @@ test_multinomial number = do
 test_binary :: Int -> IO(Int)
 test_binary number = do
   r <- random_cacheState number
-  e <- evicts r lru
+  e <- evicts r bip
   return (bool_to_int e)
   
 -- Mean of a list
@@ -90,3 +93,8 @@ mean l = (fromIntegral $ sum l)/(fromIntegral $ length l)
 bool_to_int :: Bool -> Int
 bool_to_int True = 1
 bool_to_int _ = 0
+
+
+maybe_to_int :: Maybe(SetState) -> Int
+maybe_to_int Nothing = 0
+maybe_to_int _ = 1

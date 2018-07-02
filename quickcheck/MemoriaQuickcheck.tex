@@ -196,14 +196,13 @@ prop_tlb_misses (NonNegative n) = monadicIO $ do
 
 This test verifies that when a CacheState is randomly generated, the values are within correct ranges
 \begin{verbatim}
--- Cache state created is of right size
 prop_make_cache_state_size :: (NonNegative Int) -> Property
 prop_make_cache_state_size (NonNegative n) = monadicIO $ do
   CacheState(c, t) <- run $ random_cacheState n
   assert $ (t == n) && (c <= t) && (c >= 0)
 \end{verbatim}
 
-The test continue with the eviction test. This test tries to introduce victim address in the cache, then accesses all the set of addresses (CacheState) and tries to access the victim again. If the set is evicting, then the eviction is successful.
+The tests continue with the eviction test. This test tries to introduce victim address in the cache, then accesses all the set of addresses (CacheState) and tries to access the victim again. If the set is evicting, then the eviction is successful.
 
 It should be successful when there are at least associativity many addresses in CacheState.
 \begin{verbatim}
@@ -266,11 +265,14 @@ main = do
 \section{Results and conclusion}
 The properties were a very good way of not only testing the already implemented program but also an interesting way of reasoning about the implementation.
 
-There was a mistake in the code, that made one of the reduction algorithms terminate with a set with more than associativity addresses that has been found and fixed thanks to this testing.\\
+There was a mistake in the code, found thanks to one of the tests.
+Sometimes, the group reduction finished with a CacheSet that had associativity congruent elements but more total elements.
 
-At this moment, the implementation of the program succeeds on all the tests.\\
+That would make one of the tests fail with the message \texttt{*** Failed! Assertion failed (after 32 test):  CacheState(16, 17)}.\\
 
-Quickcheck has definately proven its usefulness, and testing properties of a program is a much better solution than other kinds of testing, like unit testing. Its easy to use, and defining the properties of a program, independently of the actual testing, is a way of reasoning about what the implementation is doing vs. how it should be.
+This was corrected, and at this moment, the implementation of the program succeeds on all the tests.\\
+
+Quickcheck has definitely proven its usefulness, and testing properties of a program is a much better solution than other kinds of testing, like unit testing. Its easy to use, and defining the properties of a program, independently of the actual testing, is a way of reasoning about what the implementation is doing vs. how it should be.
 
 \clearpage
 

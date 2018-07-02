@@ -1,4 +1,12 @@
 \BOOKMARK [1][-]{section.1}{Introduction}{}% 1
 \BOOKMARK [1][-]{section.2}{A cache model in Haskell}{}% 2
-\BOOKMARK [1][-]{section.3}{Property testing}{}% 3
-\BOOKMARK [1][-]{section.4}{Results and conclusion}{}% 4
+\BOOKMARK [2][-]{subsection.2.1}{A primer on caches}{section.2}% 3
+\BOOKMARK [2][-]{subsection.2.2}{A primer on side-channel cache attacks}{section.2}% 4
+\BOOKMARK [2][-]{subsection.2.3}{A Haskell microachitecture model}{section.2}% 5
+\BOOKMARK [1][-]{section.3}{Property testing}{}% 6
+\BOOKMARK [2][-]{subsection.3.1}{Defining the properties of the program}{section.3}% 7
+\BOOKMARK [2][-]{subsection.3.2}{Implementation of the tests}{section.3}% 8
+\BOOKMARK [3][-]{subsubsection.3.2.1}{Generators}{subsection.3.2}% 9
+\BOOKMARK [3][-]{subsubsection.3.2.2}{Properties}{subsection.3.2}% 10
+\BOOKMARK [1][-]{section.4}{Results and conclusion}{}% 11
+\BOOKMARK [1][-]{section.4}{References}{}% 12

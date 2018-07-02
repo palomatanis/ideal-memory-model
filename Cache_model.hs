@@ -42,16 +42,16 @@ tlb_block_size = truncate $ (fromIntegral tlb_size) / (fromIntegral $ 2^tlb_bits
 ---- REPLACEMENT POLICIES
 type RepPol = Set -> Trace -> IO(Set, HitNumber)
 
-noise = False
+noise = True
 
 -- Calls the replacement policy with/without noise
 cacheInsert :: RepPol -> Set -> Trace -> Int -> IO(Set, HitNumber)
 cacheInsert policy set tr@(Trace t) total = do
   case noise of
     True -> do
-      ev <- tlb_congruent (expected_tlb_misses total)
+      ev <- tlb_congruent $ expected_tlb_misses total
       let n = length t
-      let new_trace = (Trace (t ++ (map SetAddress [n..(n+ev-1)])))
+      let new_trace = if (ev == 0) then tr else (Trace (t ++ (map SetIdentifier [(n + 1)..(n + ev)])))
       r <- policy set new_trace
       return r
     False -> do
@@ -97,7 +97,7 @@ mru' (Trace trace, Set set, Hit hit) =
       r <- mru'(Trace (tail trace), Set((deleteN elem set) ++ [h]), Hit (hit + 1))
       return r
     Nothing ->
-      case (elemIndex (SetAddress 0) set) of
+      case (elemIndex (SetIdentifier 0) set) of
          Just elem -> do
            r <- mru'(Trace (tail trace), Set((deleteN elem set) ++ [h]), Hit hit)
            return r
@@ -121,7 +121,7 @@ rr' (Trace trace, Set set, Hit hit) =
       r <- rr'(Trace (tail trace), Set set, Hit (hit + 1))
       return r
     Nothing ->
-      case (elemIndex (SetAddress 0) set) of
+      case (elemIndex (SetIdentifier 0) set) of
         Just elem -> do
           r <- rr'(Trace (tail trace), Set(h : (deleteN elem set)), Hit hit)
           return r
@@ -165,7 +165,7 @@ lip' (Trace trace, Set set, Hit hit) =
       r <- lip'(Trace (tail trace), Set (if (elem == ((length set) - 1)) then (h : (init set)) else set), Hit (hit + 1))
       return r
     Nothing ->
-      case (elemIndex (SetAddress 0) set) of
+      case (elemIndex (SetIdentifier 0) set) of
         Just elem -> do
           r <- lip'(Trace (tail trace), Set(h : (deleteN elem set)), Hit hit)
           return r
@@ -189,7 +189,7 @@ bip' (Trace trace, Set set, Hit hit) =
       r <- bip'(Trace (tail trace), Set (if (elem == ((length set) - 1)) then (h : (init set)) else set), Hit (hit + 1))
       return r
     Nothing ->
-      case (elemIndex (SetAddress 0) set) of
+      case (elemIndex (SetIdentifier 0) set) of
         Just elem -> do
           r <- bip'(Trace (tail trace), Set(h : (deleteN elem set)), Hit hit)
           return r

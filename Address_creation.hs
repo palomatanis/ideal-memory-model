@@ -8,7 +8,7 @@ import Base
 
   
 initialSet :: Set
-initialSet = Set (map SetAddress $ take associativity $ repeat 0)
+initialSet = Set (map SetIdentifier $ take associativity $ repeat 0)
 
 
 list_random_sets :: Int -> (IO (Address)) -> IO ([Address])
@@ -32,10 +32,10 @@ list_random_tlb number = replicateM number $ randomRIO(0, ((2^tlb_bits) - 1))
 
 
 -- Creates cache state with as many congruent addresses as tlb misses
-new_tlb_list :: Int -> IO(CacheState)
+new_tlb_list :: Int -> IO(SetState)
 new_tlb_list number = do
   r <- tlb_congruent number
-  return (CacheState (r, number))
+  return (SetState (r, number))
   
 
 tlb_congruent :: Int -> IO(Int)
@@ -52,10 +52,10 @@ tlb_congruent n = do
 
 
 -- Generates random cache state from victim and total number of addresses
-random_cacheState :: Int -> IO(CacheState)
+random_cacheState :: Int -> IO(SetState)
 random_cacheState number = do
   r <- random_cacheState' number 0
-  return (CacheState (r, number))
+  return (SetState (r, number))
   where
     random_cacheState' 0 acc = do return acc
     random_cacheState' n acc = do
@@ -66,7 +66,7 @@ random_cacheState number = do
 
 
 consecutive_trace :: Int -> Trace
-consecutive_trace n = Trace (map SetAddress [1..n])
+consecutive_trace n = Trace (map SetIdentifier [1..n])
 
 
 many_consecutive_traces :: Int -> Trace -> Trace

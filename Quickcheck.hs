@@ -6,32 +6,39 @@ import Base
 import Address_creation
 import Cache_model
 import Algorithms
-     
+
 instance Arbitrary Address where
   arbitrary = do
     a <- choose(0, free_cache - 1)
     return $ Address a
 
-instance Arbitrary CacheState where
+instance Arbitrary SetState where
   arbitrary = do
     NonNegative total <- arbitrary
     congruent <- choose (0, total)
-    return $ CacheState(congruent, total)
+    return $ SetState(congruent, total)
     
-instance SetAddress where
+instance Arbitrary SetAddress where
   arbitrary = do
-    n <- Arbitrary
+    n <- arbitrary
     return $ SetAddress n
     
-instance Arbitrary Trace where
-  arbitrary = do
-    l <- listOf SetAddress
-    return $ Trace l
+-- instance Arbitrary Trace where
+--   arbitrary = do
+--     l <- run $ sample' (arbitrary :: Gen SetAddress)
+--     return $ Trace l
 
-instance Arbitrary Set where
-  arbitrary = do
-    l <- listOf SetAddress
-    return $ Set l
+-- instance Arbitrary Trace where
+--   arbitrary = do
+--     return $ Trace l
+    
+-- sample' (arbitrary:: Gen Address)
+
+
+-- instance Arbitrary Set where
+--   arbitrary = do
+--     l <- listOf SetAddress
+--     return $ Set l
 ---- Propiedades de los generadores
 
 --  List of addresses returns an address of the correct size for partial set list
@@ -75,49 +82,49 @@ prop_tlb_misses (NonNegative n) = monadicIO $ do
 -- Cache state created is of right size
 prop_make_cache_state_size :: (NonNegative Int) -> Property
 prop_make_cache_state_size (NonNegative n) = monadicIO $ do
-  CacheState(c, t) <- run $ random_cacheState n
+  SetState(c, t) <- run $ random_cacheState n
   assert $ (t == n) && (c <= t) && (c >= 0)
 
-prop_evicts :: CacheState -> Property
-prop_evicts cacheState@(CacheState(congr, total)) = monadicIO $ do
+prop_evicts :: SetState -> Property
+prop_evicts cacheState@(SetState(congr, total)) = monadicIO $ do
   e <- run $ evicts cacheState lru
   if (congr >= associativity)
     then assert e
     else assert $ not e  
 
-prop_rep_empty_trace :: Set -> Property
-prop_rep_empty_trace set = monadicIO $ do
-  (s, h) <- cacheInsert lru set (Trace 0)
-  assert $ s == set
+-- prop_rep_empty_trace :: Set -> Property
+-- prop_rep_empty_trace set = monadicIO $ do
+--   (s, h) <- cacheInsert lru set (Trace 0)
+--   assert $ s == set
 
 -- Group reduction succeeds when there are associativity or more congruent addresses
-prop_group_reduction_bool :: CacheState -> Property
-prop_group_reduction_bool cacheState@(CacheState(congr, total)) = monadicIO $ do
+prop_group_reduction_bool :: SetState -> Property
+prop_group_reduction_bool cacheState@(SetState(congr, total)) = monadicIO $ do
   r <- run $ reduction cacheState lru
   if (congr >= associativity)
     then assert r
     else assert $ not r
 
 -- Group reduction succeeds when there are associativity or more congruent addresses
-prop_linear_reduction_bool :: CacheState -> Property
-prop_linear_reduction_bool cacheState@(CacheState(congr, total)) = monadicIO $ do
+prop_linear_reduction_bool :: SetState -> Property
+prop_linear_reduction_bool cacheState@(SetState(congr, total)) = monadicIO $ do
   r <- run $ naive_reduction cacheState lru
   if (congr >= associativity)
     then assert r
     else assert $ not r
 
 -- Checks that group reduction returns assoc addresses
-prop_group_reduction :: CacheState -> Property
-prop_group_reduction cacheState@(CacheState(congr, total)) = monadicIO $ do
-  CacheState(c, t) <- run $ reduction_b cacheState lru
+prop_group_reduction :: SetState -> Property
+prop_group_reduction cacheState@(SetState(congr, total)) = monadicIO $ do
+  SetState(c, t) <- run $ reduction_b cacheState lru
   if (congr >= associativity)
     then assert $ (c == t) && (t == associativity)
     else assert $ (c == congr) && (t == total)
 
 -- Checks that linear reduction returns assoc addresses
-prop_linear_reduction :: CacheState -> Property
-prop_linear_reduction cacheState@(CacheState(congr, total)) = monadicIO $ do
-  CacheState(c, t) <- run $ naive_reduction_b cacheState lru
+prop_linear_reduction :: SetState -> Property
+prop_linear_reduction cacheState@(SetState(congr, total)) = monadicIO $ do
+  SetState(c, t) <- run $ naive_reduction_b cacheState lru
   if (congr >= associativity)
     then assert $ (c == t) && (t == associativity)
     else assert $ (c == congr) && (t == total)
@@ -152,8 +159,8 @@ main = do
   putStrLn "Linear reduction succeeds when there are at least associativity addresses"
   quickCheck prop_linear_reduction_bool
 
-  putStrLn "Group reduction returns a CacheState of the form (CacheState(assoc, assoc))"
+  putStrLn "Group reduction returns a SetState of the form (SetState(assoc, assoc))"
   quickCheck prop_group_reduction  
 
-  putStrLn "Linear reduction returns a CacheState of the form (CacheState(assoc, assoc))"
-  quickCheck prop_linear_reduction  
+  putStrLn "Linear reduction returns a SetState of the form (SetState(assoc, assoc))"
+  quickCheck prop_linear_reduction
