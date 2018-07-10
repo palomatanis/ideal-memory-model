@@ -20,7 +20,7 @@ numberAddrToTest_To :: Int
 numberAddrToTest_To = 4000
 
 iterations :: Int
-iterations = 100
+iterations = 50
 -- iterations = 1000
 
 memoryRange :: Int
@@ -32,7 +32,7 @@ memoryRange = 24
 -- Save tests
 main = do
   m <- test_complete $ test_reduction baseline_reduction lru
-  writeFile "results/baseline_reduction_noisy_lru" ((unwords $ map show m) ++ "\n")
+  writeFile "reduction/baseline_reduction_noisy_lru" ((unwords $ map show m) ++ "\n")
     where
       test_complete test = do
         p <- mapM (do_test_of test) [numberAddrToTest_From, (numberAddrToTest_From + (2*associativity))..numberAddrToTest_To]
@@ -44,7 +44,7 @@ main = do
 -- Creates set of addresses and returns True if the reduction is successful
 test_reduction :: ReductionAlgorithm -> RepPol -> Int -> IO (Int)
 test_reduction reduction_alg pol number = do
-  r <- random_cacheState number
+  r <- random_SetOfAddresses number
   red <- reduction_alg r pol
   return (maybe_to_int red)
   
@@ -54,35 +54,10 @@ count_tlb_misses number = do
   r <- list_random_tlb number
   return (tlb_misses r)
 
-    
--- Creates set of number addresses and counts eviction sets
-test_count_evictions :: Int -> IO(Int)
-test_count_evictions number = do
-  r <- list_random_sets number random_set_partial 
-  return (number_of_eviction_sets r)
-
--- test pol = do
---   l <- pol initialSet (many_consecutive_traces 5 $ consecutive_trace 20)
---   putStrLn $ show l
-
-
--- Creates set of n addresses and counts how many addresses are in eviction sets 
-test_count_evictions_addresses :: Int -> IO(Int)
-test_count_evictions_addresses number = do
-  r <- list_random_sets number random_set_partial
-  return (number_of_eviction_addresses r)
-
-
--- Creates set of addresses and returns True if there's an eviction set
-test_multinomial :: Int -> IO(Int)
-test_multinomial number = do
-  r <- list_random_sets number random_set_partial
-  return (bool_to_int $ exists_eviction r)
-
 -- Creates set of addresses, and a random victim, checks if the set is an eviction set for the victim
 test_binary :: Int -> IO(Int)
 test_binary number = do
-  r <- random_cacheState number
+  r <- random_SetOfAddresses number
   e <- evicts r bip
   return (bool_to_int e)
   
@@ -98,3 +73,29 @@ bool_to_int _ = 0
 maybe_to_int :: Maybe(SetState) -> Int
 maybe_to_int Nothing = 0
 maybe_to_int _ = 1
+
+-- -- Creates set of number addresses and counts eviction sets
+-- test_count_evictions :: Int -> IO(Int)
+-- test_count_evictions number = do
+--   r <- list_random_sets number random_set_partial 
+--   return (number_of_eviction_sets r)
+
+-- test pol = do
+--   l <- pol initialSet (many_consecutive_traces 5 $ consecutive_trace 20)
+--   putStrLn $ show l
+
+
+-- -- Creates set of n addresses and counts how many addresses are in eviction sets 
+-- test_count_evictions_addresses :: Int -> IO(Int)
+-- test_count_evictions_addresses number = do
+--   r <- list_random_sets number random_set_partial
+--   return (number_of_eviction_addresses r)
+
+
+-- -- Creates set of addresses and returns True if there's an eviction set
+-- test_multinomial :: Int -> IO(Int)
+-- test_multinomial number = do
+--   r <- list_random_sets number random_set_partial
+--   return (bool_to_int $ exists_eviction r)
+
+

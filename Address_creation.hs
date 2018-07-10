@@ -52,16 +52,16 @@ tlb_congruent n = do
 
 
 -- Generates random cache state from victim and total number of addresses
-random_cacheState :: Int -> IO(SetState)
-random_cacheState number = do
-  r <- random_cacheState' number 0
+random_SetOfAddresses :: Int -> IO(SetState)
+random_SetOfAddresses number = do
+  r <- random_SetOfAddresses' number 0
   return (SetState (r, number))
   where
-    random_cacheState' 0 acc = do return acc
-    random_cacheState' n acc = do
+    random_SetOfAddresses' 0 acc = do return acc
+    random_SetOfAddresses' n acc = do
       r <- random_set_partial
       let comp = r == (Address 0)
-      rr <- random_cacheState' (n-1) (if comp then (acc+1) else acc)
+      rr <- random_SetOfAddresses' (n-1) (if comp then (acc+1) else acc)
       return rr
 
 

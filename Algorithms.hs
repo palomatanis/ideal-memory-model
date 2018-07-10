@@ -11,17 +11,16 @@ import Cache_model
 import Control.Monad
   
 evicts :: SetState -> RepPol -> IO(Bool)
-evicts (SetState (n, total)) policy = do
-   let (Trace t) = consecutive_trace n
-   (s, h) <- cacheInsert policy initialSet (Trace ((AddressIdentifier (n + 1)) : t)) total
-   (s2, Hit h2) <- cacheInsert policy s (Trace [(AddressIdentifier(n + 1))]) 1
+evicts (SetState (c, n)) policy = do
+   let (Trace t) = consecutive_trace c
+   (s, h) <- cacheInsert policy initialSet (Trace ((AddressIdentifier (c + 1)) : t)) n
+   (s2, Hit h2) <- cacheInsert policy s (Trace [(AddressIdentifier(c + 1))]) 1
    let v = h2 == 0
    return v
 
 -- evictschance returns true if the set evicts at least 80%
 chanceMin :: Int
 chanceMin = 1
-
 chanceOutOf :: Int
 chanceOutOf = 1
 
@@ -37,12 +36,12 @@ type ReductionAlgorithm = SetState -> RepPol -> IO(Maybe(SetState))
 
 -- Is True when reduction is succesful given a cacheState and a replacement policy
 reduction :: ReductionAlgorithm
-reduction state@(SetState(ev, total)) policy = do
-  let b = (ev == associativity) && (ev == total)
+reduction state@(SetState(c, n)) policy = do
+  let b = (c == associativity) && (c == n)
   if b then return (Just(state))
     else do
-      c <- reduction_combinations state
-      e <- findM (\x -> evictschance x policy) c
+      b <- reduction_combinations state
+      e <- findM (\x -> evictschance x policy) b
       case e of
         Just new_state -> do
           r <- reduction new_state policy
@@ -51,34 +50,33 @@ reduction state@(SetState(ev, total)) policy = do
         
 -- Baseline reduction algorithm
 baseline_reduction :: ReductionAlgorithm
-baseline_reduction state@(SetState(ev, total)) repPol = do
+baseline_reduction state repPol = do
   e <- evictschance state repPol
   if (e)
     then do
-    r <- baseline_reduction' state repPol (SetState(0, 0)) 0
+    r <- baseline_reduction' state repPol (SetState(0, 0))
     return r
     else return Nothing
 
 -- The Ints counts how many congruent addresses have been taken already, and how many in total
-baseline_reduction' :: SetState -> RepPol -> SetState -> Int -> IO(Maybe(SetState))    
-baseline_reduction' state@(SetState(e, t)) repPol eviction_set@(SetState(ec, et)) countert = do
+baseline_reduction' :: SetState -> RepPol -> SetState -> IO(Maybe(SetState))    
+baseline_reduction' state@(SetState(c, t)) repPol eviction_set@(SetState(ec, et))= do
   if (ec == associativity && et == associativity)
     then do return (Just(eviction_set))
-    else do if (countert == t || et > ec)
-              then do putStrLn $ show eviction_set                    
-                      return Nothing
-              else do (newState, taken) <- take1 state ec countert
-                      e <- evictschance newState repPol
-                      if (e) 
-                        then do o <- baseline_reduction' state repPol eviction_set (countert + 1)
+    else do if (c == 0 || et > ec)
+              then do return Nothing
+              else do (newState@(SetState(fc, ft)), taken) <- take1 state
+                      x <- evictschance (SetState(fc + ec, ft + et)) repPol
+                      if (x)
+                        then do o <- baseline_reduction' newState repPol eviction_set
                                 return o
-                        else do o <- baseline_reduction' state repPol (SetState(ec + taken, et + 1)) (countert + 1)
+                        else do o <- baseline_reduction' newState repPol (SetState(ec + taken, et + 1))
                                 return o
 
 -- Naive reduction for replacement policies
 naive_reduction :: ReductionAlgorithm
-naive_reduction state@(SetState(ev, total)) repPol = do
-  set <- shuffleM $ (take ev $ repeat 1) ++ (take (total - ev) $ repeat 0)
+naive_reduction state@(SetState(c, n)) repPol = do
+  set <- shuffleM $ (take c $ repeat 1) ++ (take (n - c) $ repeat 0)
   conflict_set <- conf set repPol
   eviction_set <- ev_set conflict_set repPol
   let s1 = sum eviction_set
@@ -130,15 +128,15 @@ ev_set conf_set pol = do
 
 -- Aux for reduction     
 reduction_combinations :: SetState -> IO([SetState])
-reduction_combinations state@(SetState (ev, total)) = do
+reduction_combinations state@(SetState (ev, n)) = do
   r <- distribute_ev ev (map (\x -> SetState (0, x)) aux) [0..associativity]
   -- let m = map (\(SetState(x, t)) -> SetState(ev - x, t)) r
-  let m = zipWith (\(SetState(x, t)) l -> SetState (ev - x, total - l)) r aux
+  let m = zipWith (\(SetState(x, t)) l -> SetState (ev - x, n - l)) r aux
   return m
   where
-    cei = ceiling $ (fromIntegral total) / (fromIntegral $ associativity + 1)
-    trun = truncate $ (fromIntegral total) / (fromIntegral $ associativity + 1)
-    n_cei = mod total (associativity + 1)
+    cei = ceiling $ (fromIntegral n) / (fromIntegral $ associativity + 1)
+    trun = truncate $ (fromIntegral n) / (fromIntegral $ associativity + 1)
+    n_cei = mod n (associativity + 1)
     n_trun = (associativity + 1) - n_cei
     aux = (take n_cei $ repeat cei) ++ (take n_trun $ repeat trun)
 
@@ -162,12 +160,12 @@ change :: Int -> [SetState] -> Maybe ([SetState])
 change s tups =
   case (tups!!s) of
     SetState(_, 0) -> Nothing
-    SetState(ev, total) ->
-      Just ((take s tups) ++ [SetState(ev + 1, total - 1)] ++ (drop (s + 1) tups))
+    SetState(ev, n) ->
+      Just ((take s tups) ++ [SetState(ev + 1, n - 1)] ++ (drop (s + 1) tups))
 
 
-take1 :: SetState -> Int -> Int -> IO(SetState, Int)
-take1 state@(SetState(e, t)) cc ct = do
-  f <- chanceX (e - cc) (t - ct)
-  return ((SetState(e-f, t-1)), f)
+take1 :: SetState -> IO(SetState, Int)
+take1 state@(SetState(e, n)) = do
+  f <- chanceX e n
+  return ((SetState(e-f, n-1)), f)
     

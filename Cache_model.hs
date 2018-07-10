@@ -12,19 +12,19 @@ import Base
 import Address_creation
 
 
----- Binary test
+-- ---- Binary test
 
--- Is there at least one eviction set
-exists_eviction :: [Address] -> Bool
-exists_eviction add = (number_of_eviction_sets add) > 0
+-- -- Is there at least one eviction set
+-- exists_eviction :: [Address] -> Bool
+-- exists_eviction add = (number_of_eviction_sets add) > 0
 
--- Count number of addresses in eviction sets
-number_of_eviction_addresses :: [Address] -> Int
-number_of_eviction_addresses = sum . filter (> associativity) . separate_sets_into_bins
+-- -- Count number of addresses in eviction sets
+-- number_of_eviction_addresses :: [Address] -> Int
+-- number_of_eviction_addresses = sum . filter (> associativity) . separate_sets_into_bins
 
--- Returns number of eviction sets for a list of sets
-number_of_eviction_sets :: [Address] -> Int
-number_of_eviction_sets = length . filter (> associativity) . separate_sets_into_bins
+-- -- Returns number of eviction sets for a list of sets
+-- number_of_eviction_sets :: [Address] -> Int
+-- number_of_eviction_sets = length . filter (> associativity) . separate_sets_into_bins
 
 
 
