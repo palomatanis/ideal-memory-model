@@ -31,8 +31,8 @@ memoryRange = 24
   
 -- Save tests
 main = do
-  m <- test_complete $ test_reduction naive_reduction rr
-  writeFile "results/linearreduction_noisy_rr" ((unwords $ map show m) ++ "\n")
+  m <- test_complete $ test_reduction baseline_reduction lru
+  writeFile "results/baseline_reduction_noisy_lru" ((unwords $ map show m) ++ "\n")
     where
       test_complete test = do
         p <- mapM (do_test_of test) [numberAddrToTest_From, (numberAddrToTest_From + (2*associativity))..numberAddrToTest_To]

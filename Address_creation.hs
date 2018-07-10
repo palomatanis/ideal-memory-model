@@ -7,8 +7,8 @@ import Data.Random
 import Base
 
   
-initialSet :: Set
-initialSet = Set (map SetIdentifier $ take associativity $ repeat 0)
+initialSet :: CacheSetContent
+initialSet = CacheSetContent (map AddressIdentifier $ take associativity $ repeat 0)
 
 
 list_random_sets :: Int -> (IO (Address)) -> IO ([Address])
@@ -66,7 +66,7 @@ random_cacheState number = do
 
 
 consecutive_trace :: Int -> Trace
-consecutive_trace n = Trace (map SetIdentifier [1..n])
+consecutive_trace n = Trace (map AddressIdentifier [1..n])
 
 
 many_consecutive_traces :: Int -> Trace -> Trace
@@ -80,6 +80,14 @@ chance64 nu = do
   let distr = (take nu $ repeat True) ++ (take (64 - nu) $ repeat False)
   r <- sample $ randomElement distr
   return r
+
+-- Receives probability (c out of t) and throws a coin with that prob
+chanceX :: Int -> Int -> IO(Int)
+chanceX c t = do
+  let distr = (take c $ repeat 1) ++ (take (t - c) $ repeat 0)
+  r <- sample $ randomElement distr
+  return r
+
 
 -- Delete nth element of a list
 deleteN :: Int -> [a] -> [a]

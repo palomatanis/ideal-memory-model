@@ -11,15 +11,15 @@ data SetState = SetState(Int, Int)
   deriving (Read, Show, Eq)
 
 -- Congruent addresses, represented with numbers to distinguist each different address
-data SetIdentifier = SetIdentifier Int
+data AddressIdentifier = AddressIdentifier Int
   deriving (Read, Show, Eq)
 
 -- List of congruent addresses that are going to be inserted to a cache
-data Trace = Trace [SetIdentifier]
+data Trace = Trace [AddressIdentifier]
   deriving (Read, Show, Eq)
 
 -- Content of a cache set, represented as the list of addresses inside it
-data Set = Set [SetIdentifier]
+data CacheSetContent = CacheSetContent [AddressIdentifier]
   deriving (Read, Show, Eq)
 
 -- Number of hits after a trace is put inside a cache

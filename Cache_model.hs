@@ -40,18 +40,18 @@ tlb_block_size = truncate $ (fromIntegral tlb_size) / (fromIntegral $ 2^tlb_bits
 
 
 ---- REPLACEMENT POLICIES
-type RepPol = Set -> Trace -> IO(Set, HitNumber)
+type RepPol = CacheSetContent -> Trace -> IO(CacheSetContent, HitNumber)
 
 noise = True
 
 -- Calls the replacement policy with/without noise
-cacheInsert :: RepPol -> Set -> Trace -> Int -> IO(Set, HitNumber)
+cacheInsert :: RepPol -> CacheSetContent -> Trace -> Int -> IO(CacheSetContent, HitNumber)
 cacheInsert policy set tr@(Trace t) total = do
   case noise of
     True -> do
       ev <- tlb_congruent $ expected_tlb_misses total
       let n = length t
-      let new_trace = if (ev == 0) then tr else (Trace (t ++ (map SetIdentifier [(n + 1)..(n + ev)])))
+      let new_trace = if (ev == 0) then tr else (Trace (t ++ (map AddressIdentifier [(n + 1)..(n + ev)])))
       r <- policy set new_trace
       return r
     False -> do
@@ -70,15 +70,15 @@ lru set trace = do
   (t, s, h) <- lru'(trace, set, Hit 0)
   return (s, h)
   
-lru' :: (Trace, Set, HitNumber) -> IO(Trace, Set, HitNumber)
+lru' :: (Trace, CacheSetContent, HitNumber) -> IO(Trace, CacheSetContent, HitNumber)
 lru' i@(Trace [], _, _) = do return i
-lru' (Trace trace, Set set, Hit hit) =
+lru' (Trace trace, CacheSetContent set, Hit hit) =
   case (elemIndex h set) of
     Just elem -> do
-      r <- lru'(Trace (tail trace), Set(h : (deleteN elem set)), Hit (hit + 1))
+      r <- lru'(Trace (tail trace), CacheSetContent(h : (deleteN elem set)), Hit (hit + 1))
       return r
     Nothing -> do
-      r <- lru'(Trace (tail trace), Set(h : init set), Hit hit)
+      r <- lru'(Trace (tail trace), CacheSetContent(h : init set), Hit hit)
       return r
   where h = head trace
 
@@ -89,20 +89,20 @@ mru set trace = do
   (t, s, h) <- mru'(trace, set, Hit 0)
   return (s, h)
 
-mru' :: (Trace, Set, HitNumber) -> IO(Trace, Set, HitNumber)
+mru' :: (Trace, CacheSetContent, HitNumber) -> IO(Trace, CacheSetContent, HitNumber)
 mru' i@(Trace [], _, _) = do return i
-mru' (Trace trace, Set set, Hit hit) =
+mru' (Trace trace, CacheSetContent set, Hit hit) =
   case (elemIndex h set) of
     Just elem -> do
-      r <- mru'(Trace (tail trace), Set((deleteN elem set) ++ [h]), Hit (hit + 1))
+      r <- mru'(Trace (tail trace), CacheSetContent((deleteN elem set) ++ [h]), Hit (hit + 1))
       return r
     Nothing ->
-      case (elemIndex (SetIdentifier 0) set) of
+      case (elemIndex (AddressIdentifier 0) set) of
          Just elem -> do
-           r <- mru'(Trace (tail trace), Set((deleteN elem set) ++ [h]), Hit hit)
+           r <- mru'(Trace (tail trace), CacheSetContent((deleteN elem set) ++ [h]), Hit hit)
            return r
          Nothing -> do
-           r <- mru'(Trace (tail trace), Set((init set) ++ [h]), Hit hit)
+           r <- mru'(Trace (tail trace), CacheSetContent((init set) ++ [h]), Hit hit)
            return r
   where h = head trace
 
@@ -113,21 +113,21 @@ rr set trace = do
   (t, s, h) <- rr'(trace, set, Hit 0)
   return (s, h)
 
-rr' :: (Trace, Set, HitNumber) -> IO(Trace, Set, HitNumber)
+rr' :: (Trace, CacheSetContent, HitNumber) -> IO(Trace, CacheSetContent, HitNumber)
 rr' i@(Trace [], _, _) = do return i
-rr' (Trace trace, Set set, Hit hit) = 
+rr' (Trace trace, CacheSetContent set, Hit hit) = 
   case (elemIndex h set) of
     Just elem -> do
-      r <- rr'(Trace (tail trace), Set set, Hit (hit + 1))
+      r <- rr'(Trace (tail trace), CacheSetContent set, Hit (hit + 1))
       return r
     Nothing ->
-      case (elemIndex (SetIdentifier 0) set) of
+      case (elemIndex (AddressIdentifier 0) set) of
         Just elem -> do
-          r <- rr'(Trace (tail trace), Set(h : (deleteN elem set)), Hit hit)
+          r <- rr'(Trace (tail trace), CacheSetContent(h : (deleteN elem set)), Hit hit)
           return r
         Nothing -> do
           b <- randomRIO(0, (associativity - 1))
-          r <- rr' (Trace (tail trace), Set (h : (deleteN b set)), Hit hit)
+          r <- rr' (Trace (tail trace), CacheSetContent (h : (deleteN b set)), Hit hit)
           return r
   where h = head trace
 
@@ -138,15 +138,15 @@ fifo set trace = do
   (t, s, h) <- fifo'(trace, set, Hit 0)
   return (s, h)
 
-fifo' :: (Trace, Set, HitNumber) -> IO(Trace, Set, HitNumber)
+fifo' :: (Trace, CacheSetContent, HitNumber) -> IO(Trace, CacheSetContent, HitNumber)
 fifo' i@(Trace [], _, _) = do return i
-fifo' (Trace trace, Set set, Hit hit) =
+fifo' (Trace trace, CacheSetContent set, Hit hit) =
   case (elemIndex h set) of
     Just _ -> do
-      r <- fifo'(Trace (tail trace), Set set, Hit (hit + 1))
+      r <- fifo'(Trace (tail trace), CacheSetContent set, Hit (hit + 1))
       return r
     Nothing -> do
-      r <- fifo'(Trace (tail trace), Set(h : init set), Hit hit)
+      r <- fifo'(Trace (tail trace), CacheSetContent(h : init set), Hit hit)
       return r
   where h = head trace
 
@@ -157,20 +157,20 @@ lip set trace = do
   (t, s, h) <- lip'(trace, set, Hit 0)
   return (s, h)
 
-lip' :: (Trace, Set, HitNumber) -> IO(Trace, Set, HitNumber)
+lip' :: (Trace, CacheSetContent, HitNumber) -> IO(Trace, CacheSetContent, HitNumber)
 lip' i@(Trace [], _, _) = do return i
-lip' (Trace trace, Set set, Hit hit) = 
+lip' (Trace trace, CacheSetContent set, Hit hit) = 
   case (elemIndex h set) of
     Just elem -> do
-      r <- lip'(Trace (tail trace), Set (if (elem == ((length set) - 1)) then (h : (init set)) else set), Hit (hit + 1))
+      r <- lip'(Trace (tail trace), CacheSetContent (if (elem == ((length set) - 1)) then (h : (init set)) else set), Hit (hit + 1))
       return r
     Nothing ->
-      case (elemIndex (SetIdentifier 0) set) of
+      case (elemIndex (AddressIdentifier 0) set) of
         Just elem -> do
-          r <- lip'(Trace (tail trace), Set(h : (deleteN elem set)), Hit hit)
+          r <- lip'(Trace (tail trace), CacheSetContent(h : (deleteN elem set)), Hit hit)
           return r
         Nothing -> do
-          r <- lip'(Trace (tail trace), Set (init set ++ [h]), Hit hit)
+          r <- lip'(Trace (tail trace), CacheSetContent (init set ++ [h]), Hit hit)
           return r
   where h = head trace
   
@@ -181,23 +181,23 @@ bip set trace = do
   (t, s, h) <- bip'(trace, set, Hit 0)
   return (s, h)
 
-bip' :: (Trace, Set, HitNumber) -> IO(Trace, Set, HitNumber)
+bip' :: (Trace, CacheSetContent, HitNumber) -> IO(Trace, CacheSetContent, HitNumber)
 bip' i@(Trace [], _, _) = do return i
-bip' (Trace trace, Set set, Hit hit) = 
+bip' (Trace trace, CacheSetContent set, Hit hit) = 
   case (elemIndex h set) of
     Just elem -> do
-      r <- bip'(Trace (tail trace), Set (if (elem == ((length set) - 1)) then (h : (init set)) else set), Hit (hit + 1))
+      r <- bip'(Trace (tail trace), CacheSetContent (if (elem == ((length set) - 1)) then (h : (init set)) else set), Hit (hit + 1))
       return r
     Nothing ->
-      case (elemIndex (SetIdentifier 0) set) of
+      case (elemIndex (AddressIdentifier 0) set) of
         Just elem -> do
-          r <- bip'(Trace (tail trace), Set(h : (deleteN elem set)), Hit hit)
+          r <- bip'(Trace (tail trace), CacheSetContent(h : (deleteN elem set)), Hit hit)
           return r
         Nothing -> do
           b <- chance64 2
           if b
-            then bip'(Trace (tail trace), Set (h : init set), Hit hit)
-            else bip'(Trace (tail trace), Set (init set ++ [h]), Hit hit)
+            then bip'(Trace (tail trace), CacheSetContent (h : init set), Hit hit)
+            else bip'(Trace (tail trace), CacheSetContent (init set ++ [h]), Hit hit)
   where h = head trace
 
 
