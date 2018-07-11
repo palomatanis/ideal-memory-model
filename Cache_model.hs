@@ -96,16 +96,27 @@ mru' (Trace trace, CacheSetContent set, Hit hit) =
     Just elem -> do
       r <- mru'(Trace (tail trace), CacheSetContent((deleteN elem set) ++ [h]), Hit (hit + 1))
       return r
-    Nothing ->
-      case (elemIndex (AddressIdentifier 0) set) of
-         Just elem -> do
-           r <- mru'(Trace (tail trace), CacheSetContent((deleteN elem set) ++ [h]), Hit hit)
-           return r
-         Nothing -> do
-           r <- mru'(Trace (tail trace), CacheSetContent((init set) ++ [h]), Hit hit)
-           return r
+    Nothing -> do
+      r <- mru'(Trace (tail trace), CacheSetContent((init set) ++ [h]), Hit hit)
+      return r
   where h = head trace
 
+-- mru' :: (Trace, CacheSetContent, HitNumber) -> IO(Trace, CacheSetContent, HitNumber)
+-- mru' i@(Trace [], _, _) = do return i
+-- mru' (Trace trace, CacheSetContent set, Hit hit) =
+--   case (elemIndex h set) of
+--     Just elem -> do
+--       r <- mru'(Trace (tail trace), CacheSetContent((deleteN elem set) ++ [h]), Hit (hit + 1))
+--       return r
+--     Nothing ->
+--       case (elemIndex (AddressIdentifier 0) set) of
+--         Just elem -> do
+--           r <- mru'(Trace (tail trace), CacheSetContent((deleteN elem set) ++ [h]), Hit hit)
+--           return r
+--         Nothing -> do
+--           r <- mru'(Trace (tail trace), CacheSetContent((init set) ++ [h]), Hit hit)
+--           return r
+--   where h = head trace
 
 -- Random replacement
 rr :: RepPol

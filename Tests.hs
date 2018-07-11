@@ -20,7 +20,7 @@ numberAddrToTest_To :: Int
 numberAddrToTest_To = 4000
 
 iterations :: Int
-iterations = 10
+iterations = 1000
 -- iterations = 1000
 
 memoryRange :: Int
@@ -31,8 +31,8 @@ memoryRange = 24
   
 -- Save tests
 main = do
-  m <- test_complete $ test_reduction reduction lru
-  writeFile "results/group_reduction_slicing_noisy_lru" ((unwords $ map show m) ++ "\n")
+  m <- test_complete $ test_binary bip
+  writeFile "results/eviction_rate_noisy_bip" ((unwords $ map show m) ++ "\n")
     where
       test_complete test = do
         p <- mapM (do_test_of test) [numberAddrToTest_From, (numberAddrToTest_From + (2*associativity))..numberAddrToTest_To]
@@ -55,10 +55,10 @@ count_tlb_misses number = do
   return (tlb_misses r)
 
 -- Creates set of addresses, and a random victim, checks if the set is an eviction set for the victim
-test_binary :: Int -> IO(Int)
-test_binary number = do
+test_binary :: RepPol -> Int -> IO(Int)
+test_binary pol number = do
   r <- random_SetOfAddresses number
-  e <- evicts r bip
+  e <- evicts r pol
   return (bool_to_int e)
   
 -- Mean of a list
