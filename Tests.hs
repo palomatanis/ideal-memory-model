@@ -20,7 +20,7 @@ numberAddrToTest_To :: Int
 numberAddrToTest_To = 4000
 
 iterations :: Int
-iterations = 1000
+iterations = 10
 -- iterations = 1000
 
 memoryRange :: Int
@@ -31,8 +31,8 @@ memoryRange = 24
   
 -- Save tests
 main = do
-  m <- test_complete $ test_reduction reduction fifo
-  writeFile "results/group_reduction_slicing_noisy_fifo" ((unwords $ map show m) ++ "\n")
+  m <- test_complete $ test_reduction reduction lru
+  writeFile "results/group_reduction_slicing_noisy_lru" ((unwords $ map show m) ++ "\n")
     where
       test_complete test = do
         p <- mapM (do_test_of test) [numberAddrToTest_From, (numberAddrToTest_From + (2*associativity))..numberAddrToTest_To]
