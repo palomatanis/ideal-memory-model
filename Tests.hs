@@ -19,6 +19,9 @@ numberAddrToTest_From = 0
 numberAddrToTest_To :: Int
 numberAddrToTest_To = 4000
 
+rangeTests :: Int
+rangeTests = 2 * associativity
+
 iterations :: Int
 iterations = 1000
 -- iterations = 1000
@@ -31,7 +34,7 @@ main = do
   writeFile "results/baseline_reduction_bip" ((unwords $ map show m) ++ "\n")
     where
       test_complete test = do
-        p <- mapM (do_test_of test) [numberAddrToTest_From, (numberAddrToTest_From + (2*associativity))..numberAddrToTest_To]
+        p <- mapM (do_test_of test) [numberAddrToTest_From, (numberAddrToTest_From + rangeTests)..numberAddrToTest_To]
         return p
       do_test_of f n = do
         p <- replicateM iterations $ f n
