@@ -23,16 +23,12 @@ iterations :: Int
 iterations = 1000
 -- iterations = 1000
 
-memoryRange :: Int
-memoryRange = 24
-
-
 -- m <- test_complete $ test_reduction reduction lru
   
 -- Save tests
 main = do
   m <- test_complete $ test_reduction baseline_reduction bip
-  writeFile "results/baseline_reduction_noisy_bip" ((unwords $ map show m) ++ "\n")
+  writeFile "results/baseline_reduction_bip" ((unwords $ map show m) ++ "\n")
     where
       test_complete test = do
         p <- mapM (do_test_of test) [numberAddrToTest_From, (numberAddrToTest_From + (2*associativity))..numberAddrToTest_To]

@@ -42,7 +42,7 @@ tlb_block_size = truncate $ (fromIntegral tlb_size) / (fromIntegral $ 2^tlb_bits
 ---- REPLACEMENT POLICIES
 type RepPol = CacheSetContent -> Trace -> IO(CacheSetContent, HitNumber)
 
-noise = True
+noise = False
 
 -- Calls the replacement policy with/without noise
 cacheInsert :: RepPol -> CacheSetContent -> Trace -> Int -> IO(CacheSetContent, HitNumber)
