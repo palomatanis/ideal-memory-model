@@ -34,7 +34,7 @@ evictschance set pol = do
   
 type ReductionAlgorithm = SetState -> RepPol -> IO(Maybe(SetState))
 
-group_reduction_size = associativity
+group_reduction_size = 1
 
 -- Is True when reduction is succesful given a cacheState and a replacement policy
 reduction :: ReductionAlgorithm
@@ -63,7 +63,7 @@ baseline_reduction state repPol = do
 -- The Ints counts how many congruent addresses have been taken already, and how many in total
 baseline_reduction' :: SetState -> RepPol -> SetState -> IO(Maybe(SetState))    
 baseline_reduction' state@(SetState(c, t)) repPol eviction_set@(SetState(ec, et))= do
-  if (ec == associativity && et == associativity)
+  if (ec == group_reduction_size && et == group_reduction_size)
     then do return (Just(eviction_set))
     else do if (c == 0 || et > ec)
               then do return Nothing
