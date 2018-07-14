@@ -34,10 +34,12 @@ evictschance set pol = do
   
 type ReductionAlgorithm = SetState -> RepPol -> IO(Maybe(SetState))
 
+group_reduction_size = 1
+
 -- Is True when reduction is succesful given a cacheState and a replacement policy
 reduction :: ReductionAlgorithm
 reduction state@(SetState(c, n)) policy = do
-  let b = (c == associativity) && (c == n)
+  let b = (c == group_reduction_size) && (c == n)
   if b then return (Just(state))
     else do
       b <- reduction_combinations state
@@ -129,15 +131,15 @@ ev_set conf_set pol = do
 -- Aux for reduction     
 reduction_combinations :: SetState -> IO([SetState])
 reduction_combinations state@(SetState (ev, n)) = do
-  r <- distribute_ev ev (map (\x -> SetState (0, x)) aux) [0..associativity]
+  r <- distribute_ev ev (map (\x -> SetState (0, x)) aux) [0..group_reduction_size]
   -- let m = map (\(SetState(x, t)) -> SetState(ev - x, t)) r
   let m = zipWith (\(SetState(x, t)) l -> SetState (ev - x, n - l)) r aux
   return m
   where
-    cei = ceiling $ (fromIntegral n) / (fromIntegral $ associativity + 1)
-    trun = truncate $ (fromIntegral n) / (fromIntegral $ associativity + 1)
-    n_cei = mod n (associativity + 1)
-    n_trun = (associativity + 1) - n_cei
+    cei = ceiling $ (fromIntegral n) / (fromIntegral $ group_reduction_size + 1)
+    trun = truncate $ (fromIntegral n) / (fromIntegral $ group_reduction_size + 1)
+    n_cei = mod n (group_reduction_size + 1)
+    n_trun = (group_reduction_size + 1) - n_cei
     aux = (take n_cei $ repeat cei) ++ (take n_trun $ repeat trun)
 
 -- Aux for reduction_combination
