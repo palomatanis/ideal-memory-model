@@ -30,8 +30,8 @@ iterations = 500
   
 -- Save tests
 main = do
-  m <- test_complete $ test_reduction reduction mru
-  writeFile "results/group_reduction_modified_mru" ((unwords $ map show m) ++ "\n")
+  m <- test_complete $ test_reduction baseline_reduction lip
+  writeFile "results/baseline_reduction_lip_alt" ((unwords $ map show m) ++ "\n")
     where
       test_complete test = do
         p <- mapM (do_test_of test) [numberAddrToTest_From, (numberAddrToTest_From + rangeTests)..numberAddrToTest_To]

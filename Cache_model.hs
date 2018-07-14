@@ -168,6 +168,7 @@ lip set trace = do
   (t, s, h) <- lip'(trace, set, Hit 0)
   return (s, h)
 
+
 lip' :: (Trace, CacheSetContent, HitNumber) -> IO(Trace, CacheSetContent, HitNumber)
 lip' i@(Trace [], _, _) = do return i
 lip' (Trace trace, CacheSetContent set, Hit hit) = 
@@ -175,14 +176,9 @@ lip' (Trace trace, CacheSetContent set, Hit hit) =
     Just elem -> do
       r <- lip'(Trace (tail trace), CacheSetContent (if (elem == ((length set) - 1)) then (h : (init set)) else set), Hit (hit + 1))
       return r
-    Nothing ->
-      case (elemIndex (AddressIdentifier 0) set) of
-        Just elem -> do
-          r <- lip'(Trace (tail trace), CacheSetContent(h : (deleteN elem set)), Hit hit)
-          return r
-        Nothing -> do
-          r <- lip'(Trace (tail trace), CacheSetContent (init set ++ [h]), Hit hit)
-          return r
+    Nothing -> do
+      r <- lip'(Trace (tail trace), CacheSetContent (init set ++ [h]), Hit hit)
+      return r
   where h = head trace
   
 
@@ -199,16 +195,11 @@ bip' (Trace trace, CacheSetContent set, Hit hit) =
     Just elem -> do
       r <- bip'(Trace (tail trace), CacheSetContent (if (elem == ((length set) - 1)) then (h : (init set)) else set), Hit (hit + 1))
       return r
-    Nothing ->
-      case (elemIndex (AddressIdentifier 0) set) of
-        Just elem -> do
-          r <- bip'(Trace (tail trace), CacheSetContent(h : (deleteN elem set)), Hit hit)
-          return r
-        Nothing -> do
-          b <- chance64 2
-          if b
-            then bip'(Trace (tail trace), CacheSetContent (h : init set), Hit hit)
-            else bip'(Trace (tail trace), CacheSetContent (init set ++ [h]), Hit hit)
+    Nothing -> do
+      b <- chance64 2
+      if b
+      then bip'(Trace (tail trace), CacheSetContent (h : init set), Hit hit)
+      else bip'(Trace (tail trace), CacheSetContent (init set ++ [h]), Hit hit)
   where h = head trace
 
 
