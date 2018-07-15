@@ -30,8 +30,8 @@ iterations = 100
   
 -- Save tests
 main = do
-  m <- test_complete $ test_reduction baseline_reduction bip
-  writeFile "results/baseline_reduction_property_bip_alt" ((unwords $ map show m) ++ "\n")
+  m <- test_complete $ test_reduction reduction lip
+  writeFile "results/group_reduction_lip" ((unwords $ map show m) ++ "\n")
     where
       test_complete test = do
         p <- mapM (do_test_of test) [numberAddrToTest_From, (numberAddrToTest_From + rangeTests)..numberAddrToTest_To]

@@ -42,7 +42,7 @@ tlb_block_size = truncate $ (fromIntegral tlb_size) / (fromIntegral $ 2^tlb_bits
 ---- REPLACEMENT POLICIES
 type RepPol = CacheSetContent -> Trace -> IO(CacheSetContent, HitNumber)
 
-noise = False
+noise = True
 
 -- Calls the replacement policy with/without noise
 cacheInsert :: RepPol -> CacheSetContent -> Trace -> Int -> IO(CacheSetContent, HitNumber)
@@ -196,7 +196,7 @@ bip' (Trace trace, CacheSetContent set, Hit hit) =
       r <- bip'(Trace (tail trace), CacheSetContent (if (elem == ((length set) - 1)) then (h : (init set)) else set), Hit (hit + 1))
       return r
     Nothing -> do
-      b <- chance64 1
+      b <- chance64 2
       if b
       then bip'(Trace (tail trace), CacheSetContent (h : init set), Hit hit)
       else bip'(Trace (tail trace), CacheSetContent (init set ++ [h]), Hit hit)

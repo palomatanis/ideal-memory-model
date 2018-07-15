@@ -35,7 +35,7 @@ evictschance set pol = do
 type ReductionAlgorithm = SetState -> RepPol -> IO(Maybe(SetState))
 
 reduction_size :: Int
-reduction_size = 1
+reduction_size = associativity
 
 -- Is True when reduction is succesful given a cacheState and a replacement policy
 reduction :: ReductionAlgorithm
