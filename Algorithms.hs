@@ -20,9 +20,9 @@ evicts (SetState (c, n)) policy = do
 
 -- evictschance returns true if the set evicts at least 80%
 chanceMin :: Int
-chanceMin = 3
+chanceMin = 4
 chanceOutOf :: Int
-chanceOutOf = 4
+chanceOutOf = 5
 
 evictschance :: SetState -> RepPol -> IO(Bool)
 evictschance set pol = do

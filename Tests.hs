@@ -23,15 +23,15 @@ rangeTests :: Int
 rangeTests = 2 * associativity
 
 iterations :: Int
-iterations = 25
+iterations = 500
 -- iterations = 1000
 
 -- m <- test_complete $ test_reduction reduction lru
   
 -- Save tests
 main = do
-  m <- test_complete $ test_reduction reduction rr
-  writeFile "results/group_reduction_property_rr" ((unwords $ map show m) ++ "\n")
+  m <- test_complete $ test_binary bip
+  writeFile "results/eviction_rate_bip_64" ((unwords $ map show m) ++ "\n")
     where
       test_complete test = do
         p <- mapM (do_test_of test) [numberAddrToTest_From, (numberAddrToTest_From + rangeTests)..numberAddrToTest_To]

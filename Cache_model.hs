@@ -196,7 +196,7 @@ bip' (Trace trace, CacheSetContent set, Hit hit) =
       r <- bip'(Trace (tail trace), CacheSetContent (if (elem == ((length set) - 1)) then (h : (init set)) else set), Hit (hit + 1))
       return r
     Nothing -> do
-      b <- chance64 2
+      b <- chance64 1
       if b
       then bip'(Trace (tail trace), CacheSetContent (h : init set), Hit hit)
       else bip'(Trace (tail trace), CacheSetContent (init set ++ [h]), Hit hit)
