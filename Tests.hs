@@ -23,7 +23,7 @@ rangeTests :: Int
 rangeTests = 2 * associativity
 
 iterations :: Int
-iterations = 50
+iterations = 100
 -- iterations = 1000
 
 -- m <- test_complete $ test_reduction reduction lru
