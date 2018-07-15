@@ -20,9 +20,9 @@ evicts (SetState (c, n)) policy = do
 
 -- evictschance returns true if the set evicts at least 80%
 chanceMin :: Int
-chanceMin = 4
+chanceMin = 3
 chanceOutOf :: Int
-chanceOutOf = 5
+chanceOutOf = 4
 
 evictschance :: SetState -> RepPol -> IO(Bool)
 evictschance set pol = do
@@ -34,12 +34,13 @@ evictschance set pol = do
   
 type ReductionAlgorithm = SetState -> RepPol -> IO(Maybe(SetState))
 
-group_reduction_size = associativity
+reduction_size :: Int
+reduction_size = 1
 
 -- Is True when reduction is succesful given a cacheState and a replacement policy
 reduction :: ReductionAlgorithm
 reduction state@(SetState(c, n)) policy = do
-  let b = (c == group_reduction_size) && (c == n)
+  let b = (c == reduction_size) && (c == n)
   if b then return (Just(state))
     else do
       b <- reduction_combinations state
@@ -63,7 +64,7 @@ baseline_reduction state repPol = do
 -- The Ints counts how many congruent addresses have been taken already, and how many in total
 baseline_reduction' :: SetState -> RepPol -> SetState -> IO(Maybe(SetState))    
 baseline_reduction' state@(SetState(c, t)) repPol eviction_set@(SetState(ec, et))= do
-  if (ec == group_reduction_size && et == group_reduction_size)
+  if (ec == reduction_size && et == reduction_size)
     then do return (Just(eviction_set))
     else do if (c == 0 || et > ec)
               then do return Nothing
@@ -131,15 +132,15 @@ ev_set conf_set pol = do
 -- Aux for reduction     
 reduction_combinations :: SetState -> IO([SetState])
 reduction_combinations state@(SetState (ev, n)) = do
-  r <- distribute_ev ev (map (\x -> SetState (0, x)) aux) [0..group_reduction_size]
+  r <- distribute_ev ev (map (\x -> SetState (0, x)) aux) [0..reduction_size]
   -- let m = map (\(SetState(x, t)) -> SetState(ev - x, t)) r
   let m = zipWith (\(SetState(x, t)) l -> SetState (ev - x, n - l)) r aux
   return m
   where
-    cei = ceiling $ (fromIntegral n) / (fromIntegral $ group_reduction_size + 1)
-    trun = truncate $ (fromIntegral n) / (fromIntegral $ group_reduction_size + 1)
-    n_cei = mod n (group_reduction_size + 1)
-    n_trun = (group_reduction_size + 1) - n_cei
+    cei = ceiling $ (fromIntegral n) / (fromIntegral $ reduction_size + 1)
+    trun = truncate $ (fromIntegral n) / (fromIntegral $ reduction_size + 1)
+    n_cei = mod n (reduction_size + 1)
+    n_trun = (reduction_size + 1) - n_cei
     aux = (take n_cei $ repeat cei) ++ (take n_trun $ repeat trun)
 
 -- Aux for reduction_combination
