@@ -20,9 +20,9 @@ evicts (SetState (c, n)) policy = do
 
 -- evictschance returns true if the set evicts at least 80%
 chanceMin :: Int
-chanceMin = 1
+chanceMin = 3
 chanceOutOf :: Int
-chanceOutOf = 1
+chanceOutOf = 4
 
 evictschance :: SetState -> RepPol -> IO(Bool)
 evictschance set pol = do
@@ -34,7 +34,7 @@ evictschance set pol = do
   
 type ReductionAlgorithm = SetState -> RepPol -> IO(Maybe(SetState))
 
-group_reduction_size = 1
+group_reduction_size = associativity
 
 -- Is True when reduction is succesful given a cacheState and a replacement policy
 reduction :: ReductionAlgorithm
