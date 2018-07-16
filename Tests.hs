@@ -20,19 +20,18 @@ numberAddrToTest_To :: Int
 numberAddrToTest_To = 4000
 
 rangeTests :: Int
---rangeTests = 2 * associativity
-rangeTests = 32
+rangeTests = 2 * associativity
 
 iterations :: Int
 iterations = 1000
--- iterations = 1000
 
--- m <- test_complete $ test_reduction reduction lru
-  
+path :: String
+path = "testpath"
+
 -- Save tests
 main = do
   m <- test_complete $ test_binary lru
-  writeFile "results/eviction_rate_assoc32_lru_2" ((unwords $ map show m) ++ "\n")
+  writeFile path ((unwords $ map show m) ++ "\n")
     where
       test_complete test = do
         p <- mapM (do_test_of test) [numberAddrToTest_From, (numberAddrToTest_From + rangeTests)..numberAddrToTest_To]
@@ -80,29 +79,3 @@ bool_to_int _ = 0
 maybe_to_int :: Maybe(SetState) -> Int
 maybe_to_int Nothing = 0
 maybe_to_int _ = 1
-
--- -- Creates set of number addresses and counts eviction sets
--- test_count_evictions :: Int -> IO(Int)
--- test_count_evictions number = do
---   r <- list_random_sets number random_set_partial 
---   return (number_of_eviction_sets r)
-
--- test pol = do
---   l <- pol initialSet (many_consecutive_traces 5 $ consecutive_trace 20)
---   putStrLn $ show l
-
-
--- -- Creates set of n addresses and counts how many addresses are in eviction sets 
--- test_count_evictions_addresses :: Int -> IO(Int)
--- test_count_evictions_addresses number = do
---   r <- list_random_sets number random_set_partial
---   return (number_of_eviction_addresses r)
-
-
--- -- Creates set of addresses and returns True if there's an eviction set
--- test_multinomial :: Int -> IO(Int)
--- test_multinomial number = do
---   r <- list_random_sets number random_set_partial
---   return (bool_to_int $ exists_eviction r)
-
-

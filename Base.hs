@@ -60,12 +60,12 @@ cacheSet = 13
 
 -- Slicing
 slice_bits :: Int
-slice_bits = 2
+slice_bits = 0
 
 -- Actual number of cache bits that can change
 free_cache_bits :: Int
-free_cache_bits = cacheOffset + cacheSet - pageOffset
--- free_cache_bits = cacheOffset + cacheSet - pageOffset + slice_bits
+--free_cache_bits = cacheOffset + cacheSet - pageOffset
+free_cache_bits = cacheOffset + cacheSet - pageOffset + slice_bits
 
 free_cache :: Int
 free_cache = 2^free_cache_bits
