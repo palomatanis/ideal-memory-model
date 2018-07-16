@@ -20,7 +20,8 @@ numberAddrToTest_To :: Int
 numberAddrToTest_To = 4000
 
 rangeTests :: Int
-rangeTests = 2 * associativity
+--rangeTests = 2 * associativity
+rangeTests = 32
 
 iterations :: Int
 iterations = 1000
@@ -31,7 +32,7 @@ iterations = 1000
 -- Save tests
 main = do
   m <- test_complete $ test_binary lru
-  writeFile "results/eviction_rate_color5_lru" ((unwords $ map show m) ++ "\n")
+  writeFile "results/eviction_rate_assoc32_lru_2" ((unwords $ map show m) ++ "\n")
     where
       test_complete test = do
         p <- mapM (do_test_of test) [numberAddrToTest_From, (numberAddrToTest_From + rangeTests)..numberAddrToTest_To]
