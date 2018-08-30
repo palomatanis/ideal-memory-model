@@ -30,6 +30,26 @@ random_set = do
 list_random_tlb :: Int -> IO ([Int])
 list_random_tlb number = replicateM number $ randomRIO(0, ((2^tlb_bits) - 1))
 
+list_random_tlb_addresses :: Int -> IO ([Address])
+list_random_tlb_addresses number = replicateM number $ random_set
+
+tlb_set :: Int -> Int -> IO(SetAddresses)
+tlb_set n count = do
+  t <- replicateM n random_set
+  let l = to_long_address t count
+  return (SetAddresses l)
+
+
+long_address_set :: Int -> IO(SetAddresses)
+long_address_set n = do
+  t <- replicateM n random_set_partial
+  let l = to_long_address t 1
+  return (SetAddresses l)
+
+
+to_long_address :: [Address] -> Int -> [LongAddress]
+to_long_address [] _ = []
+to_long_address (x:xs) c = (LongAddress (AddressIdentifier c, x)) : to_long_address xs (c+1)
 
 -- Creates cache state with as many congruent addresses as tlb misses
 new_tlb_list :: Int -> IO(SetState)
@@ -50,7 +70,6 @@ tlb_congruent n = do
       rr <- tlb_congruent' (n-1) (if comp then (acc+1) else acc)
       return rr
 
-
 -- Generates random cache state from victim and total number of addresses
 random_SetOfAddresses :: Int -> IO(SetState)
 random_SetOfAddresses number = do
@@ -63,7 +82,6 @@ random_SetOfAddresses number = do
       let comp = r == (Address 0)
       rr <- random_SetOfAddresses' (n-1) (if comp then (acc+1) else acc)
       return rr
-
 
 consecutive_trace :: Int -> Trace
 consecutive_trace n = Trace (map AddressIdentifier [1..n])

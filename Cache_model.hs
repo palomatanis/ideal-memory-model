@@ -8,6 +8,11 @@ import Data.List.Split
 
 import Data.Random
 
+--import Control.Monad.State
+import Control.Monad.IO.Class
+import Control.Monad.Trans.State
+import Control.Monad.Trans.Writer
+
 import Base
 import Address_creation
 
@@ -187,8 +192,101 @@ bip' (Trace trace, CacheSetContent set, Hit hit) =
   where h = head trace
 
 
+type AdaptiveRepPol = SetAddresses -> IO(CacheSetContent, HitNumber)
+
+pol0 :: RepPol
+pol0 = lru
+
+pol1 :: RepPol
+pol1 = bip
+
+-- Calls the replacement policy with/without noise
+
+adaptiveCacheInsert :: CacheSetContent -> SetAddresses -> IO(CacheSetContent, HitNumber, Int)
+adaptiveCacheInsert setcontent (SetAddresses addresses) = do
+  let fresh_state = create_fresh_state setcontent 512
+  case noise of
+    True -> do
+      -- The TLB misses should not be at the end
+      (SetAddresses t) <- tlb_set (expected_tlb_misses $ length addresses) $ length addresses
+      let new_trace = SetAddresses (addresses ++ t)
+      r <- evalStateT (adaptivePolicy new_trace) fresh_state
+      return r
+    False -> do
+      r <- evalStateT (adaptivePolicy (SetAddresses addresses)) fresh_state
+      return r
+
+create_fresh_state :: CacheSetContent -> Int -> CacheState
+create_fresh_state victim init = (victim, map (\x -> (x, initialSet))(l0++l1), Hit 0, init)
+  where l0 = [0, ((2^cacheSet)`div` num_regions)..possible_caches]
+        l1 = map (+1) l0
+        possible_caches = if noise then (2^cacheSet) else (2^free_cache_bits) -1
+
+adaptivePolicy :: SetAddresses -> StateT CacheState IO (CacheSetContent, HitNumber, Int)
+adaptivePolicy (SetAddresses []) = do
+  (csc, _, h, psel) <- get
+  return (csc, h, psel)
+    
+adaptivePolicy (SetAddresses (x:xs)) = do
+  (csc, l, h, psel) <- get
+  case x of
+    LongAddress (id, Address 2) -> callPol id
+    LongAddress (id, Address n) -> callLeader id n (n `mod` ((2^cacheSet) `div` num_regions))
+  adaptivePolicy (SetAddresses xs)
+
+-- (new_csc, new_hn, new_psel) <- callPol csc id psel    
+callPol :: AddressIdentifier -> StateT CacheState IO ()
+callPol id = do
+  (csc, l, Hit h, psel) <- get
+  let p = if (psel > 512) then bip else lru
+  (new_cacheContent, Hit hit) <- liftIO $ p csc (Trace [id])
+  put (new_cacheContent, l, Hit (h+hit), psel)
+
+-- (new_l, new_psel) <- callLeader id n l psel 0/1
+callLeader :: AddressIdentifier -> Int -> Int -> StateT CacheState IO ()
+callLeader id n mod = do
+  (csc, l, h, psel) <- get
+  if ((mod == 0) || (mod == 1)) then do
+    let (a, rest) = take_from_list (\(x, _) -> x == n) l
+    case a of
+      Just (n, cacheContent) -> do
+        let p = if (mod == 0) then pol0 else pol1
+        (new_cacheContent, Hit hit) <- liftIO $ p cacheContent $ Trace [id]
+        let new_psel = saturating_psel $ psel + (if (mod == 0) then (1-hit) else (-1+hit))
+        let new_cachestate = (csc, ((n, new_cacheContent): rest), h, new_psel)
+        put (new_cachestate)
+      _ -> put (csc, l, h, psel)
+  else put (csc, l, h, psel)
+
+
+
+    -- CacheSetContent -> Trace -> IO(CacheSetContent, HitNumber)
+    
+
+
+-- pop :: State Stack Int  
+-- pop = State $ \(x:xs) -> (x,xs) 
+  
 ---- Aux
+
+saturating_psel :: Int -> Int
+saturating_psel n
+  | n > 1024 = 1024
+  | n < 0 = 0
+  | otherwise = n
+
 
 -- Takes list of sets and outputs the histogram
 separate_sets_into_bins :: [Address] -> [Int]
 separate_sets_into_bins sets = map (\x -> (length $ filter (==x) $ map show_set sets)) $ [0..(free_cache - 1)]
+
+
+-- Takes list and predicate and returns elements that satisfies predicate and rest of List
+take_from_list :: (a -> Bool) -> [a] -> (Maybe a, [a])
+take_from_list f l = take_from_list' f l []
+
+take_from_list' :: (a -> Bool) -> [a] -> [a] -> (Maybe a, [a])
+take_from_list' f [] l = (Nothing, l)
+take_from_list' f (x:xs) l =
+  if (f(x)) then (Just x, xs ++ l)
+  else take_from_list' f xs (x:l)

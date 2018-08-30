@@ -3,28 +3,37 @@ module Base  where
 ----- TYPES
 
 -- Address represented as an Int (set number)
-data Address = Address Int
+newtype Address = Address Int
   deriving (Read, Show, Eq)
 
 -- The cache state is represented by the number of addresses in the victim set, and the total number of addresses
-data SetState = SetState(Int, Int)
+newtype SetState = SetState(Int, Int)
   deriving (Read, Show, Eq)
 
 -- Congruent addresses, represented with numbers to distinguist each different address
-data AddressIdentifier = AddressIdentifier Int
+newtype AddressIdentifier = AddressIdentifier Int
   deriving (Read, Show, Eq)
 
 -- List of congruent addresses that are going to be inserted to a cache
-data Trace = Trace [AddressIdentifier]
+newtype Trace = Trace [AddressIdentifier]
   deriving (Read, Show, Eq)
 
 -- Content of a cache set, represented as the list of addresses inside it
-data CacheSetContent = CacheSetContent [AddressIdentifier]
+newtype CacheSetContent = CacheSetContent [AddressIdentifier]
   deriving (Read, Show, Eq)
 
 -- Number of hits after a trace is put inside a cache
-data HitNumber = Hit Int
+newtype HitNumber = Hit Int
   deriving (Read, Show, Eq)
+
+-- -- Set of addresses, each address is a tuple with a unique ID and the set number
+data LongAddress = LongAddress (AddressIdentifier, Address)
+  deriving (Read, Show, Eq)
+
+data SetAddresses = SetAddresses [LongAddress]
+  deriving (Read, Show, Eq)
+
+type CacheState = (CacheSetContent, [(Int, CacheSetContent)], HitNumber, Int)
 
 create_set :: Int -> Address
 create_set = Address
@@ -83,4 +92,8 @@ tlb_size = 1536
 tlb_bits :: Int
 tlb_bits = 2
 
+
+--- Number of regions or constituencies for the adaptive rep. pol
+num_regions :: Int
+num_regions = 32
 
