@@ -23,14 +23,14 @@ rangeTests :: Int
 rangeTests = 2 * associativity
 
 iterations :: Int
-iterations = 1000
+iterations = 10
 
 path :: String
-path = "testpath"
+path = "./adaptive/test"
 
 -- Save tests
 main = do
-  m <- test_complete $ test_binary lru
+  m <- test_complete $ test_adaptive_eviction lru bip
   writeFile path ((unwords $ map show m) ++ "\n")
     where
       test_complete test = do
@@ -54,12 +54,19 @@ count_tlb_misses number = do
   return (tlb_misses r)
 
 -- Creates set of addresses, and a random victim, checks if the set is an eviction set for the victim
-test_binary :: RepPol -> Int -> IO(Int)
-test_binary pol number = do
+test_eviction :: RepPol -> Int -> IO(Int)
+test_eviction pol number = do
   r <- random_SetOfAddresses number
   e <- evicts r pol
   return (bool_to_int e)
 
+-- Creates set of addresses, and a random victim, checks if the set is an eviction set for the victim
+test_adaptive_eviction :: RepPol -> RepPol -> Int -> IO(Int)
+test_adaptive_eviction pol1 pol2 number = do
+  r <- long_address_set number
+  e <- evicts_adapt r pol1 pol2
+  return (bool_to_int e)
+  
 -- Creates set of addresses, and a random victim, checks if the set is an eviction set for the victim
 test_assoc :: RepPol -> Int -> IO(Int)
 test_assoc pol number = do

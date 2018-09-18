@@ -33,7 +33,11 @@ data LongAddress = LongAddress (AddressIdentifier, Address)
 data SetAddresses = SetAddresses [LongAddress]
   deriving (Read, Show, Eq)
 
-type CacheState = (CacheSetContent, [(Int, CacheSetContent)], HitNumber, Int)
+type RepPol = CacheSetContent -> Trace -> IO(CacheSetContent, HitNumber)
+
+type CacheState = (RepPol, RepPol, CacheSetContent, [(Int, CacheSetContent)], HitNumber, Int)
+
+type EvictionStrategy = (Int, Int, Int)
 
 create_set :: Int -> Address
 create_set = Address

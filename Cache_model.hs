@@ -29,7 +29,6 @@ tlb_block_size = truncate $ (fromIntegral tlb_size) / (fromIntegral $ 2^tlb_bits
 
 
 ---- REPLACEMENT POLICIES
-type RepPol = CacheSetContent -> Trace -> IO(CacheSetContent, HitNumber)
 
 noise = False
 
@@ -194,17 +193,11 @@ bip' (Trace trace, CacheSetContent set, Hit hit) =
 
 type AdaptiveRepPol = SetAddresses -> IO(CacheSetContent, HitNumber)
 
-pol0 :: RepPol
-pol0 = lru
-
-pol1 :: RepPol
-pol1 = bip
-
 -- Calls the replacement policy with/without noise
-
-adaptiveCacheInsert :: CacheSetContent -> SetAddresses -> IO(CacheSetContent, HitNumber, Int)
-adaptiveCacheInsert setcontent (SetAddresses addresses) = do
-  let fresh_state = create_fresh_state setcontent 512
+adaptiveCacheInsert :: RepPol -> RepPol -> CacheSetContent -> SetAddresses -> IO(CacheSetContent, HitNumber, Int)
+adaptiveCacheInsert pol1 pol2 setcontent (SetAddresses addresses) = do
+  let fresh_state = create_fresh_state pol1 pol2 setcontent 512
+--  let fresh_state = create_fresh_state pol1 pol2 setcontent 512
   case noise of
     True -> do
       -- The TLB misses should not be at the end
@@ -216,57 +209,55 @@ adaptiveCacheInsert setcontent (SetAddresses addresses) = do
       r <- evalStateT (adaptivePolicy (SetAddresses addresses)) fresh_state
       return r
 
-create_fresh_state :: CacheSetContent -> Int -> CacheState
-create_fresh_state victim init = (victim, map (\x -> (x, initialSet))(l0++l1), Hit 0, init)
+-- type CacheState = (RepPol, RepPol, CacheSetContent, [(Int, CacheSetContent)], HitNumber, Int)
+
+-- Creates a new state of the hole cache, from the set number of the victim, and the initial state of the victim cache set
+create_fresh_state :: RepPol -> RepPol -> CacheSetContent -> Int -> CacheState
+create_fresh_state p1 p2 victim init = (p1, p2, victim, map (\x -> (x, initialSet))(l0++l1), Hit 0, init)
   where l0 = [0, ((2^cacheSet)`div` num_regions)..possible_caches]
         l1 = map (+1) l0
         possible_caches = if noise then (2^cacheSet) else (2^free_cache_bits) -1
 
+-- Is the one that inserts all the addresses, the ones in the victim addresses on one side and leaders on the other
 adaptivePolicy :: SetAddresses -> StateT CacheState IO (CacheSetContent, HitNumber, Int)
 adaptivePolicy (SetAddresses []) = do
-  (csc, _, h, psel) <- get
+  (p1, p2, csc, _, h, psel) <- get
   return (csc, h, psel)
     
 adaptivePolicy (SetAddresses (x:xs)) = do
-  (csc, l, h, psel) <- get
+  (p1, p2, csc, l, h, psel) <- get
   case x of
     LongAddress (id, Address 2) -> callPol id
     LongAddress (id, Address n) -> callLeader id n (n `mod` ((2^cacheSet) `div` num_regions))
   adaptivePolicy (SetAddresses xs)
 
+-- Calls the corresponding replacement policy for a victim address, as psel says. Updates the content of the victim, and number of hits
 -- (new_csc, new_hn, new_psel) <- callPol csc id psel    
 callPol :: AddressIdentifier -> StateT CacheState IO ()
 callPol id = do
-  (csc, l, Hit h, psel) <- get
-  let p = if (psel > 512) then bip else lru
+  (p1, p2, csc, l, Hit h, psel) <- get
+  let p = if (psel > 512) then p2 else p1
   (new_cacheContent, Hit hit) <- liftIO $ p csc (Trace [id])
-  put (new_cacheContent, l, Hit (h+hit), psel)
+  put (p1, p2, new_cacheContent, l, Hit (h+hit), psel)
 
+-- Calls replacement policy for a leader address, updates psel and state of the whole cache 
 -- (new_l, new_psel) <- callLeader id n l psel 0/1
 callLeader :: AddressIdentifier -> Int -> Int -> StateT CacheState IO ()
 callLeader id n mod = do
-  (csc, l, h, psel) <- get
+  (p1, p2, csc, l, h, psel) <- get
   if ((mod == 0) || (mod == 1)) then do
     let (a, rest) = take_from_list (\(x, _) -> x == n) l
     case a of
       Just (n, cacheContent) -> do
-        let p = if (mod == 0) then pol0 else pol1
+        let p = if (mod == 0) then p1 else p2
         (new_cacheContent, Hit hit) <- liftIO $ p cacheContent $ Trace [id]
         let new_psel = saturating_psel $ psel + (if (mod == 0) then (1-hit) else (-1+hit))
-        let new_cachestate = (csc, ((n, new_cacheContent): rest), h, new_psel)
+        let new_cachestate = (p1, p2, csc, ((n, new_cacheContent): rest), h, new_psel)
         put (new_cachestate)
-      _ -> put (csc, l, h, psel)
-  else put (csc, l, h, psel)
+      _ -> put (p1, p2, csc, l, h, psel)
+  else put (p1, p2, csc, l, h, psel)
 
 
-
-    -- CacheSetContent -> Trace -> IO(CacheSetContent, HitNumber)
-    
-
-
--- pop :: State Stack Int  
--- pop = State $ \(x:xs) -> (x,xs) 
-  
 ---- Aux
 
 saturating_psel :: Int -> Int
