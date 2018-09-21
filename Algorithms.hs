@@ -17,22 +17,19 @@ evicts (SetState (c, n)) policy = do
    (s2, Hit h2) <- cacheInsert policy s (Trace [(AddressIdentifier(c + 1))]) 1
    let v = h2 == 0
    return v
-
-
-eviction_strategy :: EvictionStrategy
-eviction_strategy = (1, 1, 1)
-
+   
 
 -- Eviction test for adaptive replacement policy
-evicts_adapt :: SetAddresses -> RepPol -> RepPol -> IO(Bool)
-evicts_adapt set@(SetAddresses s) rep1 rep2 = do
+evicts_adapt :: SetAddresses -> RepPol -> RepPol -> EvictionStrategy -> IO((Bool, Int, Int))
+evicts_adapt set@(SetAddresses s) rep1 rep2 eviction_strategy = do
   -- change initial set by set with the victim already in
   let n = length s
-  (t, _, _) <- adaptiveCacheInsert rep1 rep2 initialSet (SetAddresses [LongAddress((AddressIdentifier n), (Address 2))])
-  (t2, _, _) <- adaptiveCacheInsert rep1 rep2 t (eviction_strategy_trace set eviction_strategy)
-  (_, Hit h3, _) <- adaptiveCacheInsert rep1 rep2 t2 (SetAddresses [LongAddress((AddressIdentifier n), (Address 2))])
+  (t, Hit h1, _) <- adaptiveCacheInsert rep1 rep2 initialSet (SetAddresses [LongAddress((AddressIdentifier n), (Address 2))])
+  -- putStrLn $ show $ eviction_strategy_trace set eviction_strategy
+  (t2, Hit h2, _) <- adaptiveCacheInsert rep1 rep2 t (eviction_strategy_trace set eviction_strategy)
+  (_, Hit h3, psel) <- adaptiveCacheInsert rep1 rep2 t2 (SetAddresses [LongAddress((AddressIdentifier n), (Address 2))])
   let v = h3 == 0
-  return v
+  return (v, (h1 + h2 + h3), psel)
 
 -- Creates the set of addresses to test eviction with a certain eviction strategy
 eviction_strategy_trace :: SetAddresses -> EvictionStrategy -> SetAddresses
@@ -40,7 +37,7 @@ eviction_strategy_trace (SetAddresses set) strategy = (SetAddresses (map (\x -> 
 
 eviction_strategy_trace' :: [LongAddress] -> EvictionStrategy -> Int -> [Int]
 eviction_strategy_trace' [] (c, d, l) n = []
-eviction_strategy_trace' set (c, d, l) n = (take (c * d) $ cycle [n..(n+d-1)]) ++ (if (n > ((length set) - l - 1)) then [] else eviction_strategy_trace' set (c, d, l) (n + l))
+eviction_strategy_trace' set (c, d, l) n = (take (c * d) $ cycle [n..(n+d-1)]) ++ (if ((n + l) >= ((length set) - d)) then [] else eviction_strategy_trace' set (c, d, l) (n + l))
 
 
 -- Evictschance returns true if the set evicts at least 80%
