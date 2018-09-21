@@ -1,4 +1,4 @@
-module Tests where
+module Main where
 
 import Base
 import Cache_model
@@ -24,6 +24,18 @@ rangeTests = 2 * associativity
 
 iterations :: Int
 iterations = 50
+
+
+cfrom = 1
+cto = 6
+dfrom = 1
+dto = 6
+lfrom = 1
+lto = 6
+
+main = do
+  let eviction_strategies = filter (\(_, b, c) -> b >= c) $ [ (x,y,z) | x<-[cfrom..cto], y<-[dfrom..dto], z<-[lfrom..lto] ]
+  mapM (\ev@(a, b, c) -> executeTestAdaptive ("./adaptive/adaptive_eviction_test_50it_512psel_lru_bip_" ++ (show a) ++ "_" ++ (show b) ++ "_" ++ (show c)) lru bip ev) eviction_strategies
 
 -- path :: String
 -- path = "./adaptive/adaptive_eviction_test_50_lru_bip_1_4_4"
