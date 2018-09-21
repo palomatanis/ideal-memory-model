@@ -25,14 +25,18 @@ rangeTests = 2 * associativity
 iterations :: Int
 iterations = 50
 
-
-cfrom = 1
+-- Eviction strategies
+-- Range of values to test of C
+cfrom = 1 
 cto = 6
+-- Range of values to test of D
 dfrom = 1
 dto = 6
+-- Range of values to test of L
 lfrom = 1
 lto = 6
 
+-- Calls the test for eviction with all the combinations of the eviction strategies
 main = do
   let eviction_strategies = filter (\(_, b, c) -> b >= c) $ [ (x,y,z) | x<-[cfrom..cto], y<-[dfrom..dto], z<-[lfrom..lto] ]
   mapM (\ev@(a, b, c) -> executeTestAdaptive ("./adaptive/adaptive_eviction_test_50it_512psel_lru_bip_" ++ (show a) ++ "_" ++ (show b) ++ "_" ++ (show c)) lru bip ev) eviction_strategies
@@ -41,9 +45,9 @@ main = do
 -- path = "./adaptive/adaptive_eviction_test_50_lru_bip_1_4_4"
 
 -- Save tests
-
+-- Performs test of eviction for adaptive replacement policies, saves the averages of the results
 executeTestAdaptive path p1 p2 es = do
-  m@[(a, b, c)] <- test_complete $ test_adaptive_eviction p1 p2 es
+  m <- test_complete $ test_adaptive_eviction p1 p2 es
   let (ev, hits, psel) = unzip3 m
   outh <- openFile path WriteMode
   mapM (hPutStrLn outh . show) ev
@@ -77,7 +81,7 @@ executeTestAdaptive path p1 p2 es = do
 --         let (es, hs, pss) = unzip3 res
 --         return ((mean es, mean hs, mean pss))
 
-        
+-- Execute all tests and save results to file
 executeTestGeneric path p1 = do
   m <- test_complete $ test_eviction p1
   writeFile path ((unwords $ map show m) ++ "\n")
@@ -88,8 +92,6 @@ executeTestGeneric path p1 = do
       do_test_of f n = do
         p <- replicateM iterations $ f n
         return (mean p)
-
-
         
 -- Creates set of addresses and returns True if the reduction is successful
 test_reduction :: ReductionAlgorithm -> RepPol -> Int -> IO (Int)
@@ -118,14 +120,16 @@ test_adaptive_eviction pol1 pol2 es number = do
   (ev, hits, psel) <- evicts_adapt r pol1 pol2 es
   return ((bool_to_int ev, hits, psel))
 
-
 -- Creates set of addresses, and a random victim, checks if the set is an eviction set for the victim
 test_assoc :: RepPol -> Int -> IO(Int)
 test_assoc pol number = do
   let r = (SetState(16, 100)) 
   e <- evicts r pol
   return (bool_to_int e)
-  
+
+
+-- Aux
+
 -- Mean of a list
 mean :: [Int] -> Float
 mean l = (fromIntegral $ sum l)/(fromIntegral $ length l)
@@ -133,7 +137,6 @@ mean l = (fromIntegral $ sum l)/(fromIntegral $ length l)
 bool_to_int :: Bool -> Int
 bool_to_int True = 1
 bool_to_int _ = 0
-
 
 maybe_to_int :: Maybe(SetState) -> Int
 maybe_to_int Nothing = 0

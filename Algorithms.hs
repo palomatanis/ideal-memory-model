@@ -9,7 +9,8 @@ import Address_creation
 import Cache_model
 
 import Control.Monad
-  
+
+-- Performs eviction test for a set of addresses and a reduction policy  
 evicts :: SetState -> RepPol -> IO(Bool)
 evicts (SetState (c, n)) policy = do
    let (Trace t) = consecutive_trace c
@@ -17,7 +18,6 @@ evicts (SetState (c, n)) policy = do
    (s2, Hit h2) <- cacheInsert policy s (Trace [(AddressIdentifier(c + 1))]) 1
    let v = h2 == 0
    return v
-   
 
 -- Eviction test for adaptive replacement policy
 evicts_adapt :: SetAddresses -> RepPol -> RepPol -> EvictionStrategy -> IO((Bool, Int, Int))
@@ -34,13 +34,13 @@ evicts_adapt set@(SetAddresses s) rep1 rep2 eviction_strategy = do
 -- Creates the set of addresses to test eviction with a certain eviction strategy
 eviction_strategy_trace :: SetAddresses -> EvictionStrategy -> SetAddresses
 eviction_strategy_trace (SetAddresses set) strategy = (SetAddresses (map (\x -> set !! x) $ eviction_strategy_trace' set strategy 0))
+  where
+    eviction_strategy_trace' :: [LongAddress] -> EvictionStrategy -> Int -> [Int]
+    eviction_strategy_trace' [] (c, d, l) n = []
+    eviction_strategy_trace' set (c, d, l) n = (take (c * d) $ cycle [n..(n+d-1)]) ++ (if ((n + l) >= ((length set) - d)) then [] else eviction_strategy_trace' set (c, d, l) (n + l))
 
-eviction_strategy_trace' :: [LongAddress] -> EvictionStrategy -> Int -> [Int]
-eviction_strategy_trace' [] (c, d, l) n = []
-eviction_strategy_trace' set (c, d, l) n = (take (c * d) $ cycle [n..(n+d-1)]) ++ (if ((n + l) >= ((length set) - d)) then [] else eviction_strategy_trace' set (c, d, l) (n + l))
 
-
--- Evictschance returns true if the set evicts at least 80%
+-- Evictschance returns true if the set evicts at least 80%: A version of the eviction test put with probabilistic results
 chanceMin :: Int
 chanceMin = 1
 chanceOutOf :: Int
@@ -56,6 +56,7 @@ evictschance set pol = do
   
 type ReductionAlgorithm = SetState -> RepPol -> IO(Maybe(SetState))
 
+-- Objective size for the output of the reduction
 reduction_size :: Int
 reduction_size = associativity
 
@@ -82,21 +83,20 @@ baseline_reduction state repPol = do
     r <- baseline_reduction' state repPol (SetState(0, 0))
     return r
     else return Nothing
-
--- The Ints counts how many congruent addresses have been taken already, and how many in total
-baseline_reduction' :: SetState -> RepPol -> SetState -> IO(Maybe(SetState))    
-baseline_reduction' state@(SetState(c, t)) repPol eviction_set@(SetState(ec, et))= do
-  if (ec == reduction_size && et == reduction_size)
-    then do return (Just(eviction_set))
-    else do if (c == 0 || et > ec)
-              then do return Nothing
-              else do (newState@(SetState(fc, ft)), taken) <- take1 state
-                      x <- evictschance (SetState(fc + ec, ft + et)) repPol
-                      if (x)
-                        then do o <- baseline_reduction' newState repPol eviction_set
-                                return o
-                        else do o <- baseline_reduction' newState repPol (SetState(ec + taken, et + 1))
-                                return o
+  where
+    baseline_reduction' :: SetState -> RepPol -> SetState -> IO(Maybe(SetState))    
+    baseline_reduction' state@(SetState(c, t)) repPol eviction_set@(SetState(ec, et))= do
+      if (ec == reduction_size && et == reduction_size)
+        then do return (Just(eviction_set))
+        else do if (c == 0 || et > ec)
+                  then do return Nothing
+                  else do (newState@(SetState(fc, ft)), taken) <- take1 state
+                          x <- evictschance (SetState(fc + ec, ft + et)) repPol
+                          if (x)
+                            then do o <- baseline_reduction' newState repPol eviction_set
+                                    return o
+                            else do o <- baseline_reduction' newState repPol (SetState(ec + taken, et + 1))
+                                    return o
 
 -- Naive reduction for replacement policies
 naive_reduction :: ReductionAlgorithm
@@ -111,7 +111,7 @@ naive_reduction state@(SetState(c, n)) repPol = do
     then return (Just (state))
     else return (Nothing)
     
-
+-- Given an address (represented by a set), list of addresses and replacement policy, does an eviction test multiple times
 probe :: Int -> [Int] -> RepPol -> IO(Bool)
 probe 0 _ _ = do return False
 probe _ set pol = do
@@ -134,7 +134,6 @@ conf set pol = do
                 return rr
         else do rr <- conf' t (h : conf_set) pol
                 return rr
-
 
 ev_set :: [Int] -> RepPol -> IO([Int])
 ev_set conf_set pol = do
@@ -180,14 +179,12 @@ distribute_ev ev tups possib = do
       r <- distribute_ev ev tups possib'
       return r
 
-
 change :: Int -> [SetState] -> Maybe ([SetState])
 change s tups =
   case (tups!!s) of
     SetState(_, 0) -> Nothing
     SetState(ev, n) ->
       Just ((take s tups) ++ [SetState(ev + 1, n - 1)] ++ (drop (s + 1) tups))
-
 
 take1 :: SetState -> IO(SetState, Int)
 take1 state@(SetState(e, n)) = do
