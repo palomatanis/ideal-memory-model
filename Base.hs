@@ -101,3 +101,6 @@ tlb_bits = 2
 num_regions :: Int
 num_regions = 32
 
+
+targetSet :: Int
+targetSet = 2

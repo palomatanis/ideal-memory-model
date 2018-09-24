@@ -199,11 +199,14 @@ adaptivePolicy :: SetAddresses -> StateT CacheState IO (CacheSetContent, HitNumb
 adaptivePolicy (SetAddresses []) = do
   (p1, p2, csc, _, h, psel) <- get
   return (csc, h, psel)
-adaptivePolicy (SetAddresses (x:xs)) = do
+adaptivePolicy (SetAddresses ((LongAddress(id, Address x)):xs)) = do
   (p1, p2, csc, l, h, psel) <- get
-  case x of
-    LongAddress (id, Address 2) -> callPol id
-    LongAddress (id, Address n) -> callLeader id n (n `mod` ((2^cacheSet) `div` num_regions))
+  if (x == targetSet)
+    then callPol id
+    else callLeader id x (x `mod` ((2^cacheSet) `div` num_regions))
+  -- case x of
+  --   LongAddress (id, Address ts) -> callPol id
+  --   LongAddress (id, Address n) -> callLeader id n (n `mod` ((2^cacheSet) `div` num_regions))
   adaptivePolicy (SetAddresses xs)
 
 -- Calls the corresponding replacement policy for a victim address, as psel says. Updates the content of the victim, and number of hits
@@ -229,7 +232,6 @@ callLeader id n mod = do
         let new_psel = saturating_psel $ psel + (if (mod == 0) then (1-hit) else (-1+hit))
         let new_cachestate = (p1, p2, csc, ((n, new_cacheContent): rest), h, new_psel)
         put (new_cachestate)
-      _ -> put (p1, p2, csc, l, h, psel)
   else put (p1, p2, csc, l, h, psel)
 
 

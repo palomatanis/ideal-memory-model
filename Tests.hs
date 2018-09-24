@@ -19,6 +19,14 @@ numberAddrToTest_From = 0
 numberAddrToTest_To :: Int
 numberAddrToTest_To = 4000
 
+  
+numberCongAddresses_From :: Int
+numberCongAddresses_From = 10
+
+numberCongAddresses_To :: Int
+numberCongAddresses_To = 30
+
+
 rangeTests :: Int
 rangeTests = 2 * associativity
 
@@ -39,7 +47,7 @@ lto = 6
 -- Calls the test for eviction with all the combinations of the eviction strategies
 main = do
   let eviction_strategies = filter (\(_, b, c) -> b >= c) $ [ (x,y,z) | x<-[cfrom..cto], y<-[dfrom..dto], z<-[lfrom..lto] ]
-  mapM (\ev@(a, b, c) -> executeTestAdaptive ("./adaptive/adaptive_eviction_test_50it_512psel_lru_bip_" ++ (show a) ++ "_" ++ (show b) ++ "_" ++ (show c)) lru bip ev) eviction_strategies
+  mapM (\ev@(a, b, c) -> executeTestAdaptive ("./adaptive/adaptive_eviction_test_50it_0psel_lru_bip_" ++ (show a) ++ "_" ++ (show b) ++ "_" ++ (show c)) lru bip ev) eviction_strategies
 
 -- path :: String
 -- path = "./adaptive/adaptive_eviction_test_50_lru_bip_1_4_4"
@@ -67,6 +75,23 @@ executeTestAdaptive path p1 p2 es = do
         let (es, hs, pss) = unzip3 res
         return ((mean es, mean hs, mean pss))
 
+executeTestCongruent path p1 es = do
+  m <- test_complete $ test_adaptive_eviction p1 p1 es
+  let (ev, hits, _) = unzip3 m
+  outh <- openFile path WriteMode
+  mapM (hPutStrLn outh . show) ev
+  hClose outh
+  outh <- openFile (path ++ "_hits") WriteMode
+  mapM (hPutStrLn outh . show) hits
+  hClose outh
+    where
+      test_complete test = do
+        p <- mapM (do_test_of test) [numberCongAddresses_From..numberCongAddresses_To]
+        return p  
+      do_test_of f n = do
+        res <- replicateM iterations $ f n
+        let (es, hs, pss) = unzip3 res
+        return ((mean es, mean hs, mean pss))
 
 -- executeTestAdaptive path p1 p2 es = do
 --   m@[(a, b, c)] <- test_complete $ test_adaptive_eviction p1 p2 es
@@ -120,6 +145,14 @@ test_adaptive_eviction pol1 pol2 es number = do
   (ev, hits, psel) <- evicts_adapt r pol1 pol2 es
   return ((bool_to_int ev, hits, psel))
 
+-- Creates set of addresses, and a random victim, checks if the set is an eviction set for the victim
+test_adaptive_eviction_congruent :: RepPol ->  EvictionStrategy -> Int -> IO((Int, Int, Int))
+test_adaptive_eviction_congruent pol1 es number = do
+  let r = congruent_long_address_set number
+  (ev, hits, psel) <- evicts_adapt r pol1 pol1 es
+  return ((bool_to_int ev, hits, psel))
+
+  
 -- Creates set of addresses, and a random victim, checks if the set is an eviction set for the victim
 test_assoc :: RepPol -> Int -> IO(Int)
 test_assoc pol number = do

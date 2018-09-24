@@ -14,8 +14,8 @@ import Control.Monad
 evicts :: SetState -> RepPol -> IO(Bool)
 evicts (SetState (c, n)) policy = do
    let (Trace t) = consecutive_trace c
-   (s, h) <- cacheInsert policy initialSet (Trace ((AddressIdentifier (c + 1)) : t)) n
-   (s2, Hit h2) <- cacheInsert policy s (Trace [(AddressIdentifier(c + 1))]) 1
+   (s, _) <- cacheInsert policy initialSet (Trace ((AddressIdentifier (c + 1)) : t)) n
+   (_, Hit h2) <- cacheInsert policy s (Trace [(AddressIdentifier(c + 1))]) 1
    let v = h2 == 0
    return v
 
@@ -26,8 +26,8 @@ evicts_adapt set@(SetAddresses s) rep1 rep2 eviction_strategy = do
   let n = length s
   (t, Hit h1, _) <- adaptiveCacheInsert rep1 rep2 initialSet (SetAddresses [LongAddress((AddressIdentifier n), (Address 2))])
   -- putStrLn $ show $ eviction_strategy_trace set eviction_strategy
-  (t2, Hit h2, _) <- adaptiveCacheInsert rep1 rep2 t (eviction_strategy_trace set eviction_strategy)
-  (_, Hit h3, psel) <- adaptiveCacheInsert rep1 rep2 t2 (SetAddresses [LongAddress((AddressIdentifier n), (Address 2))])
+  (t2, Hit h2, psel) <- adaptiveCacheInsert rep1 rep2 t (eviction_strategy_trace set eviction_strategy)
+  (_, Hit h3, _) <- adaptiveCacheInsert rep1 rep2 t2 (SetAddresses [LongAddress((AddressIdentifier n), (Address 2))])
   let v = h3 == 0
   return (v, (h1 + h2 + h3), psel)
 

@@ -46,10 +46,12 @@ long_address_set n = do
   let l = to_long_address t 1
   return (SetAddresses l)
 
-
 to_long_address :: [Address] -> Int -> [LongAddress]
 to_long_address [] _ = []
 to_long_address (x:xs) c = (LongAddress (AddressIdentifier c, x)) : to_long_address xs (c+1)
+
+congruent_long_address_set :: Int -> SetAddresses
+congruent_long_address_set n = (SetAddresses (to_long_address (replicate n (Address targetSet)) 1))
 
 -- Creates cache state with as many congruent addresses as tlb misses
 new_tlb_list :: Int -> IO(SetState)
