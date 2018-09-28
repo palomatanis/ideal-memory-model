@@ -20,17 +20,17 @@ evicts (SetState (c, n)) policy = do
    return v
 
 -- Eviction test for adaptive replacement policy
-evicts_adapt :: SetAddresses -> RepPol -> RepPol -> EvictionStrategy -> IO((Bool, Int, Int))
-evicts_adapt set@(SetAddresses s) rep1 rep2 eviction_strategy = do
+evicts_adapt :: SetAddresses -> CacheState -> EvictionStrategy -> IO((Bool, CacheState))
+evicts_adapt set@(SetAddresses s) initial_cache_state eviction_strategy = do
   -- change initial set by set with the victim already in
   let n = length s
-  (t, Hit h1, _) <- adaptiveCacheInsert rep1 rep2 initialSet (SetAddresses [LongAddress((AddressIdentifier n), (Address 2))])
-  -- putStrLn $ show $ eviction_strategy_trace set eviction_strategy
-  (t2, Hit h2, psel) <- adaptiveCacheInsert rep1 rep2 t (eviction_strategy_trace set eviction_strategy)
-  (_, Hit h3, _) <- adaptiveCacheInsert rep1 rep2 t2 (SetAddresses [LongAddress((AddressIdentifier n), (Address 2))])
-  let v = h3 == 0
-  return (v, (h1 + h2 + h3), psel)
+  cs1 <- adaptiveCacheInsert (SetAddresses [LongAddress((AddressIdentifier n), (Address 2))]) initial_cache_state
+  cs2@(_,_,_,_,Hit h2,_) <- adaptiveCacheInsert (eviction_strategy_trace set eviction_strategy) cs1
+  cs3@(_,_,_,_,Hit h3,_) <- adaptiveCacheInsert (SetAddresses [LongAddress((AddressIdentifier n), (Address 2))]) cs2
+  let v = h3 == h2
+  return (v, cs3)
 
+        
 -- Creates the set of addresses to test eviction with a certain eviction strategy
 eviction_strategy_trace :: SetAddresses -> EvictionStrategy -> SetAddresses
 eviction_strategy_trace (SetAddresses set) strategy = (SetAddresses (map (\x -> set !! x) $ eviction_strategy_trace' set strategy 0))

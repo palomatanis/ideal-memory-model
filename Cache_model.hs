@@ -172,9 +172,8 @@ bip set trace = do
 type AdaptiveRepPol = SetAddresses -> IO(CacheSetContent, HitNumber)
 
 -- Calls the replacement policy with/without noise
-adaptiveCacheInsert :: RepPol -> RepPol -> CacheSetContent -> SetAddresses -> IO(CacheSetContent, HitNumber, Int)
-adaptiveCacheInsert pol1 pol2 setcontent (SetAddresses addresses) = do
-  let fresh_state = create_fresh_state pol1 pol2 setcontent 512
+adaptiveCacheInsert :: SetAddresses -> CacheState -> IO(CacheState)
+adaptiveCacheInsert (SetAddresses addresses) fresh_state = do
 --  let fresh_state = create_fresh_state pol1 pol2 setcontent 512
   case noise of
     True -> do
@@ -187,18 +186,11 @@ adaptiveCacheInsert pol1 pol2 setcontent (SetAddresses addresses) = do
       r <- evalStateT (adaptivePolicy (SetAddresses addresses)) fresh_state
       return r
 
--- Creates a new state of the hole cache, from the set number of the victim, and the initial state of the victim cache set
-create_fresh_state :: RepPol -> RepPol -> CacheSetContent -> Int -> CacheState
-create_fresh_state p1 p2 victim init = (p1, p2, victim, map (\x -> (x, initialSet))(l0++l1), Hit 0, init)
-  where l0 = [0, ((2^cacheSet)`div` num_regions)..possible_caches]
-        l1 = map (+1) l0
-        possible_caches = if noise then (2^cacheSet) else (2^free_cache_bits) -1
-
 -- Is the one that inserts all the addresses, the ones in the victim addresses on one side and leaders on the other
-adaptivePolicy :: SetAddresses -> StateT CacheState IO (CacheSetContent, HitNumber, Int)
+adaptivePolicy :: SetAddresses -> StateT CacheState IO (CacheState)
 adaptivePolicy (SetAddresses []) = do
-  (p1, p2, csc, _, h, psel) <- get
-  return (csc, h, psel)
+  cs@(p1, p2, csc, _, h, psel) <- get
+  return cs
 adaptivePolicy (SetAddresses ((LongAddress(id, Address x)):xs)) = do
   (p1, p2, csc, l, h, psel) <- get
   if (x == targetSet)
