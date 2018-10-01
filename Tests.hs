@@ -21,7 +21,8 @@ numberAddrToTest_To = 4000
 
   
 numberCongAddresses_From :: Int
-numberCongAddresses_From = 10
+numberCongAddresses_From = 6
+-- at least 'dto'addresses
 
 numberCongAddresses_To :: Int
 numberCongAddresses_To = 30
@@ -31,7 +32,7 @@ rangeTests :: Int
 rangeTests = 2 * associativity
 
 iterations :: Int
-iterations = 50
+iterations = 100
 
 -- Eviction strategies
 -- Range of values to test of C
@@ -47,7 +48,7 @@ lto = 6
 -- Calls the test for eviction with all the combinations of the eviction strategies
 main = do
   let eviction_strategies = filter (\(_, b, c) -> b >= c) $ [ (x,y,z) | x<-[cfrom..cto], y<-[dfrom..dto], z<-[lfrom..lto] ]
-  mapM (\ev@(a, b, c) -> executeTestAdaptive ("./adaptive/adaptive_eviction_test_50it_512psel_lru_lru" ++ (show a) ++ "_" ++ (show b) ++ "_" ++ (show c)) lru lru [ev]) eviction_strategies
+  mapM (\ev@(a, b, c) -> executeTestCongruent ("./adaptive/congruent_adaptive_eviction_test_100it_512psel_lru" ++ (show a) ++ "_" ++ (show b) ++ "_" ++ (show c)) lru ev) eviction_strategies
 
 -- path :: String
 -- path = "./adaptive/adaptive_eviction_test_50_lru_bip_1_4_4"
@@ -79,7 +80,7 @@ executeTestAdaptive path p1 p2 es = do
         return ((mean es, mean hs, mean pss))
 
 executeTestCongruent path p1 es = do
-  m <- test_complete $ test_adaptive_eviction p1 p1 es
+  m <- test_complete $ test_adaptive_eviction_congruent p1 es
   let (ev, hits, _) = unzip3 m
   outh <- openFile path WriteMode
   mapM (hPutStrLn outh . show) ev
