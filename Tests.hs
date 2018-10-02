@@ -25,14 +25,14 @@ numberCongAddresses_From = 6
 -- at least 'dto'addresses
 
 numberCongAddresses_To :: Int
-numberCongAddresses_To = 30
+numberCongAddresses_To = 32
 
 
 rangeTests :: Int
 rangeTests = 2 * associativity
 
 iterations :: Int
-iterations = 100
+iterations = 50
 
 -- Eviction strategies
 -- Range of values to test of C
@@ -45,10 +45,13 @@ dto = 6
 lfrom = 1
 lto = 6
 
+eviction_strategies = filter (\(_, b, c) -> b >= c) $ [ (x,y,z) | x<-[cfrom..cto], y<-[dfrom..dto], z<-[lfrom..lto] ]
+
 -- Calls the test for eviction with all the combinations of the eviction strategies
-main = do
-  let eviction_strategies = filter (\(_, b, c) -> b >= c) $ [ (x,y,z) | x<-[cfrom..cto], y<-[dfrom..dto], z<-[lfrom..lto] ]
-  mapM (\ev@(a, b, c) -> executeTestCongruent ("./adaptive/congruent_adaptive_eviction_test_100it_512psel_fifo_" ++ (show a) ++ "_" ++ (show b) ++ "_" ++ (show c)) fifo ev) eviction_strategies
+main = do 
+  mapM execute [(lru, "lru"), (bip, "bip"), (lip, "lip"), (fifo, "fifo"), (mru, "mru"), (rr, "mru")]
+  where execute (pol, name) = do
+          mapM (\ev@(a, b, c) -> executeTestCongruent ("./adaptive/congruent_adaptive_eviction_test_" ++ (show iterations) ++ "it_512psel_v15_"++ name ++"_" ++ (show a) ++ "_" ++ (show b) ++ "_" ++ (show c)) pol [ev]) eviction_strategies
 
 -- path :: String
 -- path = "./adaptive/adaptive_eviction_test_50_lru_bip_1_4_4"
@@ -78,6 +81,7 @@ executeTestAdaptive path p1 p2 es = do
         let hs = map (\(Hit x) -> x) hss
         -- let (es, hs, pss) = unzip3 res
         return ((mean es, mean hs, mean pss))
+
 
 executeTestCongruent path p1 es = do
   m <- test_complete $ test_adaptive_eviction_congruent p1 es
@@ -157,33 +161,34 @@ test_eviction pol number = do
 test_adaptive_eviction :: RepPol -> RepPol -> [EvictionStrategy] -> Int -> IO((Int, CacheState))
 test_adaptive_eviction pol1 pol2 es number = do
   r <- long_address_set number
-  let fresh_cache_state = create_fresh_state pol1 pol2 initialSet 512
+  let fresh_cache_state = create_fresh_state pol1 pol2 (initialSet number) 512
   (ev, cs) <- test_adaptive_eviction' r (False, fresh_cache_state) es
   return ((bool_to_int ev, cs))
-  where
-    test_adaptive_eviction' :: SetAddresses -> (Bool, CacheState) -> [EvictionStrategy] -> IO((Bool, CacheState))
-    test_adaptive_eviction' _ st [] = do
-      return st
-    test_adaptive_eviction' set (_, state) (est:ests) = do
-      res <- evicts_adapt set state est
-      test_adaptive_eviction' set res ests
-          
 
   
 -- Creates a new state of the hole cache, from the set number of the victim, and the initial state of the victim cache set
 create_fresh_state :: RepPol -> RepPol -> CacheSetContent -> Int -> CacheState
-create_fresh_state p1 p2 victim init = (p1, p2, victim, map (\x -> (x, initialSet))(l0++l1), Hit 0, init)
+create_fresh_state p1 p2 victim init = (p1, p2, victim, map (\x -> (x, (initialSet 0)))(l0++l1), Hit 0, init)
   where l0 = [0, ((2^cacheSet)`div` num_regions)..possible_caches]
         l1 = map (+1) l0
         possible_caches = if noise then (2^cacheSet) else (2^free_cache_bits) -1
-        
+
+
+--- NOW THE VICTIM IS ALREADY INSIDE THE CACHE        
 -- Creates set of addresses, and a random victim, checks if the set is an eviction set for the victim
-test_adaptive_eviction_congruent :: RepPol ->  EvictionStrategy -> Int -> IO((Int, CacheState))
+test_adaptive_eviction_congruent :: RepPol ->  [EvictionStrategy] -> Int -> IO((Int, CacheState))
 test_adaptive_eviction_congruent pol1 es number = do
   let r = congruent_long_address_set number
-  let fresh_cache_state = create_fresh_state pol1 pol1 initialSet 512
-  (ev, cs) <- evicts_adapt r fresh_cache_state es
+  let fresh_cache_state = create_fresh_state pol1 pol1 (initialSet number) 512
+  (ev, cs) <- test_adaptive_eviction' r (False, fresh_cache_state) es
   return ((bool_to_int ev, cs))
+
+test_adaptive_eviction' :: SetAddresses -> (Bool, CacheState) -> [EvictionStrategy] -> IO((Bool, CacheState))
+test_adaptive_eviction' _ st [] = do
+  return st
+test_adaptive_eviction' set (_, state) (est:ests) = do
+  res <- evicts_adapt set state est
+  test_adaptive_eviction' set res ests
 
   
 -- Creates set of addresses, and a random victim, checks if the set is an eviction set for the victim

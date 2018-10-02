@@ -7,8 +7,11 @@ import Data.Random
 import Base
 
   
-initialSet :: CacheSetContent
-initialSet = CacheSetContent (map AddressIdentifier $ take associativity $ repeat 0)
+-- initialSet :: CacheSetContent
+-- initialSet = CacheSetContent (map AddressIdentifier $ take associativity $ repeat 0)
+
+initialSet :: Int -> CacheSetContent
+initialSet n = CacheSetContent ([AddressIdentifier 0,AddressIdentifier 0,AddressIdentifier 0,AddressIdentifier 0,AddressIdentifier 0,AddressIdentifier 0,AddressIdentifier 0,AddressIdentifier 0,AddressIdentifier 0,AddressIdentifier 0,AddressIdentifier 0,AddressIdentifier 0,AddressIdentifier 0,AddressIdentifier 0,AddressIdentifier 0,AddressIdentifier 0])
 
 
 list_random_sets :: Int -> (IO (Address)) -> IO ([Address])
