@@ -18,8 +18,8 @@ newtype AddressIdentifier = AddressIdentifier Int
 newtype Trace = Trace [AddressIdentifier]
   deriving (Read, Show, Eq)
 
--- Content of a cache set, represented as the list of addresses inside it
-newtype CacheSetContent = CacheSetContent [AddressIdentifier]
+-- Content of a cache set, represented as the list of addresses inside it. There is a register per slot
+newtype CacheSetContent = CacheSetContent [(Int, AddressIdentifier)]
   deriving (Read, Show, Eq)
 
 -- Number of hits after a trace is put inside a cache

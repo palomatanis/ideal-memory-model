@@ -61,12 +61,12 @@ lru set trace = do
       lru' :: (Trace, CacheSetContent, HitNumber) -> IO(Trace, CacheSetContent, HitNumber)
       lru' i@(Trace [], _, _) = do return i
       lru' (Trace trace, CacheSetContent set, Hit hit) =
-        case (elemIndex h set) of
+        case (elemIndex h $ map (\(a,b) -> b) set) of
           Just elem -> do
-            r <- lru'(Trace (tail trace), CacheSetContent(h : (deleteN elem set)), Hit (hit + 1))
+            r <- lru'(Trace (tail trace), CacheSetContent((0,h) : (deleteN elem set)), Hit (hit + 1))
             return r
           Nothing -> do
-            r <- lru'(Trace (tail trace), CacheSetContent(h : init set), Hit hit)
+            r <- lru'(Trace (tail trace), CacheSetContent((0,h) : init set), Hit hit)
             return r
         where h = head trace
 
@@ -79,12 +79,12 @@ mru set trace = do
       mru' :: (Trace, CacheSetContent, HitNumber) -> IO(Trace, CacheSetContent, HitNumber)
       mru' i@(Trace [], _, _) = do return i
       mru' (Trace trace, CacheSetContent set, Hit hit) =
-        case (elemIndex h set) of
+        case (elemIndex h $ map (\(a,b) -> b) set) of
           Just elem -> do
-            r <- mru'(Trace (tail trace), CacheSetContent((deleteN elem set) ++ [h]), Hit (hit + 1))
+            r <- mru'(Trace (tail trace), CacheSetContent((deleteN elem set) ++ [(0,h)]), Hit (hit + 1))
             return r
           Nothing -> do
-            r <- mru'(Trace (tail trace), CacheSetContent((init set) ++ [h]), Hit hit)
+            r <- mru'(Trace (tail trace), CacheSetContent((init set) ++ [(0,h)]), Hit hit)
             return r
         where h = head trace
 
@@ -97,19 +97,14 @@ rr set trace = do
       rr' :: (Trace, CacheSetContent, HitNumber) -> IO(Trace, CacheSetContent, HitNumber)
       rr' i@(Trace [], _, _) = do return i
       rr' (Trace trace, CacheSetContent set, Hit hit) = 
-        case (elemIndex h set) of
+        case (elemIndex h $ map (\(a,b)-> b) set) of
           Just elem -> do
             r <- rr'(Trace (tail trace), CacheSetContent set, Hit (hit + 1))
             return r
-          Nothing ->
-            case (elemIndex (AddressIdentifier 0) set) of
-              Just elem -> do
-                r <- rr'(Trace (tail trace), CacheSetContent(h : (deleteN elem set)), Hit hit)
-                return r
-              Nothing -> do
-                b <- randomRIO(0, (associativity - 1))
-                r <- rr' (Trace (tail trace), CacheSetContent (h : (deleteN b set)), Hit hit)
-                return r
+          Nothing -> do
+            b <- randomRIO(0, (associativity - 1))
+            r <- rr' (Trace (tail trace), CacheSetContent ((0,h) : (deleteN b set)), Hit hit)
+            return r
         where h = head trace
 
 -- First in first out
@@ -121,12 +116,12 @@ fifo set trace = do
       fifo' :: (Trace, CacheSetContent, HitNumber) -> IO(Trace, CacheSetContent, HitNumber)
       fifo' i@(Trace [], _, _) = do return i
       fifo' (Trace trace, CacheSetContent set, Hit hit) =
-        case (elemIndex h set) of
+        case (elemIndex h $ map (\(a,b) -> b) set) of
           Just _ -> do
             r <- fifo'(Trace (tail trace), CacheSetContent set, Hit (hit + 1))
             return r
           Nothing -> do
-            r <- fifo'(Trace (tail trace), CacheSetContent(h : init set), Hit hit)
+            r <- fifo'(Trace (tail trace), CacheSetContent((0,h) : init set), Hit hit)
             return r
         where h = head trace
 
@@ -139,12 +134,12 @@ lip set trace = do
       lip' :: (Trace, CacheSetContent, HitNumber) -> IO(Trace, CacheSetContent, HitNumber)
       lip' i@(Trace [], _, _) = do return i
       lip' (Trace trace, CacheSetContent set, Hit hit) = 
-        case (elemIndex h set) of
+        case (elemIndex h $ map (\(a,b) -> b) set) of
           Just elem -> do
-            r <- lip'(Trace (tail trace), CacheSetContent (if (elem == ((length set) - 1)) then (h : (init set)) else set), Hit (hit + 1))
+            r <- lip'(Trace (tail trace), CacheSetContent (if (elem == ((length set) - 1)) then ((0,h) : (init set)) else set), Hit (hit + 1))
             return r
           Nothing -> do
-            r <- lip'(Trace (tail trace), CacheSetContent (init set ++ [h]), Hit hit)
+            r <- lip'(Trace (tail trace), CacheSetContent (init set ++ [(0,h)]), Hit hit)
             return r
         where h = head trace
 
@@ -157,20 +152,85 @@ bip set trace = do
       bip' :: (Trace, CacheSetContent, HitNumber) -> IO(Trace, CacheSetContent, HitNumber)
       bip' i@(Trace [], _, _) = do return i
       bip' (Trace trace, CacheSetContent set, Hit hit) = 
-        case (elemIndex h set) of
+        case (elemIndex h $ map (\(a,b) -> b) set) of
           Just elem -> do
-            r <- bip'(Trace (tail trace), CacheSetContent (if (elem == ((length set) - 1)) then (h : (init set)) else set), Hit (hit + 1))
+            r <- bip'(Trace (tail trace), CacheSetContent (if (elem == ((length set) - 1)) then ((0,h) : (init set)) else set), Hit (hit + 1))
             return r
           Nothing -> do
             b <- chance64 2
             if b
-              then bip'(Trace (tail trace), CacheSetContent (h : init set), Hit hit)
-              else bip'(Trace (tail trace), CacheSetContent (init set ++ [h]), Hit hit)
+              then bip'(Trace (tail trace), CacheSetContent ((0,h) : init set), Hit hit)
+              else bip'(Trace (tail trace), CacheSetContent (init set ++ [(0,h)]), Hit hit)
         where h = head trace
 
 -- Adaptive replacement policy
 type AdaptiveRepPol = SetAddresses -> IO(CacheSetContent, HitNumber)
 
+
+
+ -- Static re-reference interval prediction
+m = 3
+-- Hit promotion policy = hp hit priority or fp frequency priority
+hp = True -- if hp is False, then fp
+
+srrip :: RepPol
+srrip set trace = do
+  (t, s, h) <- srrip'(trace, set, Hit 0)
+  return (s, h)
+    where
+      srrip' :: (Trace, CacheSetContent, HitNumber) -> IO(Trace, CacheSetContent, HitNumber)
+      srrip' i@(Trace [], _, _) = do return i
+      srrip' (Trace trace, CacheSetContent set, Hit hit) =
+        case (elemIndex h $ map (\(a,b) -> b) set) of
+          Just elem -> do
+            let (reg, el) = set !! elem
+            let new_cache_st = take elem set ++ [((if hp then 0 else (if reg > 0 then reg-1 else 0)), el)] ++ drop (elem + 1) set
+            r <- srrip'(Trace (tail trace), CacheSetContent(new_cache_st), Hit (hit + 1))
+            return r
+          Nothing ->
+            case (elemIndex (2^m-1) $ map (\(a,b) -> a) set) of
+              Just elem -> do -- There is a rrpv register with a (2^m-1)
+                let (reg, el) = set !! elem
+                let new_cache_st = take elem set ++ [(2^m-2, el)] ++ drop (elem + 1) set
+                r <- srrip'(Trace (tail trace), CacheSetContent(new_cache_st), Hit hit)
+                return r
+              Nothing -> do
+                let new_cache_st = map (\(a,b) -> (a+1,b)) set
+                r <- srrip'(Trace trace, CacheSetContent(new_cache_st), Hit hit)
+                return r
+        where h = head trace
+
+-- Bimodal RRIP - puts new blocks with a distant rrpv (2^m-1) most of the time, but sometimes in long rrpv (2^m-2)
+brrip :: RepPol
+brrip set trace = do
+  (t, s, h) <- brrip'(trace, set, Hit 0)
+  return (s, h)
+    where
+      brrip' :: (Trace, CacheSetContent, HitNumber) -> IO(Trace, CacheSetContent, HitNumber)
+      brrip' i@(Trace [], _, _) = do return i
+      brrip' (Trace trace, CacheSetContent set, Hit hit) =
+        case (elemIndex h $ map (\(a,b) -> b) set) of
+          Just elem -> do
+            let (reg, el) = set !! elem
+            let new_cache_st = take elem set ++ [((if hp then 0 else (if reg > 0 then reg-1 else 0)), el)] ++ drop (elem + 1) set
+            r <- brrip'(Trace (tail trace), CacheSetContent(new_cache_st), Hit (hit + 1))
+            return r
+          Nothing ->
+            case (elemIndex (2^m-1) $ map (\(a,b) -> a) set) of
+              Just elem -> do -- There is a rrpv register with a (2^m-1)
+                let (reg, el) = set !! elem
+                b <- chance64 2
+                let new_cache_st = if b
+                      then (take elem set ++ [(2^m-2, el)] ++ drop (elem + 1) set)
+                      else (take elem set ++ [(2^m-1, el)] ++ drop (elem + 1) set)
+                r <- brrip'(Trace (tail trace), CacheSetContent(new_cache_st), Hit hit)
+                return r
+              Nothing -> do
+                let new_cache_st = map (\(a,b) -> (a+1,b)) set
+                r <- brrip'(Trace trace, CacheSetContent(new_cache_st), Hit hit)
+                return r
+        where h = head trace
+                   
 -- Calls the replacement policy with/without noise
 adaptiveCacheInsert :: SetAddresses -> CacheState -> IO(CacheState)
 adaptiveCacheInsert (SetAddresses addresses) fresh_state = do

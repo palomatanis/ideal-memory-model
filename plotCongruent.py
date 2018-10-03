@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 
 directory = "/home/paloma.pedregal/memory-model/adaptive/"
 
-filesToPlot = "congruent_adaptive_eviction_test_50it_512psel_"
+filesToPlot = "congruent_adaptive_eviction_test_100it_"
 
 # my_list = os.listdir(directory)
 
@@ -41,11 +41,13 @@ plt.rcParams.update({'figure.max_open_warning': 0})
 #         fig.savefig(directory + "/figures/adaptive_congruent" + fs, dpi = fig.dpi)
 
 
-policies = ('lru', 'fifo', 'bip', 'lip', 'mru', 'rr')
+# policies = ('lru', 'fifo', 'bip', 'lip', 'mru', 'rr')
+policies = ('lru', 'bip', 'rr')
 
 victims = ["v0", "v1", "v2", "v3", "v4", "v5", "v6", "v7", "v8", "v9", "v10", "v11", "v12", "v13", "v14", "v15"]
 
-cols = [[p + " " + v for v in victims] for p in policies]
+cols = [p + "_" + v for p in policies for v in victims]
+
 
 # rows = files
 
@@ -59,21 +61,30 @@ rows = ["1_1_1", "1_2_1", "1_2_2", "1_3_1", "1_3_2", "1_3_3", "1_4_1", "1_4_2", 
   
 
 for i in range (6, 32):
+    print (i)
     elem = numCongruent (i)
     # Number of misses
     rowsDataMisses = []
+    rowsDataEviction = []
     for s in rows:
-        rowElem = []
-        for pol in policies:
-            for v in victims:
-                with open (directory + filesToPlot + v + "_" + pol + "_" + s + "_hits") as f:
-                    rowElem.append (num_accesses(s)[elem] - ([float(x) for x in f.read().splitlines()][elem]))
-        rowsDataMisses.append(rowElem)        
-
+        rowElemMisses = []
+        rowElemEviction = []
+        for pol in cols:
+            openDir = directory + filesToPlot + pol + "_" + s
+            with open (openDir + "_hits") as f:
+                rowElemMisses.append (([float('%.3f'%(num_accesses(s)[elem] - (float(x)))) for x in f.read().splitlines()][elem]))
+            with open (openDir) as f:
+                rowElemEviction.append ([float('%.3f'%(float(x))) for x in f.read().splitlines()][elem])
+        rowsDataMisses.append(rowElemMisses)
+        rowsDataEviction.append(rowElemEviction)        
+        
+        
     # vals = [[int(j) for j in i] for i in rowsData]    
     # normal = plt.Normalize(vals.min()-1, vals.max()+1)  
+    saveDir = directory + "figures/congruent_eviction_strategies_" + str(i)
 
-
+    print ("a")
+    
     vals = np.around(np.array(rowsDataMisses))
     normal = plt.Normalize(vals.min()-1, vals.max()+1)
 
@@ -84,25 +95,16 @@ for i in range (6, 32):
     ax.axis('off')
 
     clust_data = rowsDataMisses
-    ax.table(cellText=clust_data,rowLabels=rows, colLabels=cols, loc='center', cellColours=plt.cm.BuGn(normal(vals))) ## colormaps: pink, bone, cool, hot
-    plt.title(str(i) + "congruent addresses")
+    ax.table(cellText=clust_data,rowLabels=rows, colLabels=cols, loc='center', colWidths=[0.1 for x in cols], cellColours=plt.cm.YlGnBu(normal(vals))) ## colormaps: pink, bone, cool, hot
+    #plt.title(str(i) + " congruent addresses")
     # plt.show()
-    fig.savefig(directory + "/figures/congruent_eviction_strategies_" + str(i)+ "_misses", bbox_inches='tight', dpi = fig.dpi)
+    plt.tight_layout()
+    fig.savefig(saveDir + "_misses", bbox_inches='tight', dpi = fig.dpi)
 
-
-    # Eviction rate
-    rowsData = []
-    for s in rows:
-        rowElem = []
-        for pol in policies:
-            for v in victims:
-                with open (directory + filesToPlot + v + "_" + pol + "_" + s) as f:
-                    rowElem.append ([float(x) for x in f.read().splitlines()][elem])
-        rowsData.append(rowElem)        
-
-
-    vals = np.around(np.array(rowsData))
-    normal = plt.Normalize(vals.min()-1, vals.max()+1)
+    print ("b")
+    vals = np.array(rowsDataEviction)
+###    normal = plt.Normalize(vals.min()-1, vals.max()+1)
+    normal = plt.Normalize(vals.min()+0, vals.max()+1)
 
     fig, ax = plt.subplots()
     # Hide axes
@@ -110,7 +112,9 @@ for i in range (6, 32):
     ax.yaxis.set_visible(False)
     ax.axis('off')
 
-    clust_data = rowsData
-    ax.table(cellText=clust_data,rowLabels=rows, colLabels=cols, loc='center', cellColours=plt.cm.BuGn(normal(vals))) ## colormaps: pink, bone, cool, hot
+    clust_data = rowsDataEviction
+    ax.table(cellText=clust_data,rowLabels=rows, colLabels=cols, loc='center', colWidths=[0.1 for x in cols], cellColours=plt.cm.YlGnBu(normal(vals))) ## colormaps: pink, bone, cool, hot
+    # plt.title(str(i) + " congruent addresses")
     # plt.show()
-    fig.savefig(directory + "/figures/congruent_eviction_strategies_" + str(i), bbox_inches='tight', dpi = fig.dpi)
+    plt.tight_layout()
+    fig.savefig(saveDir, bbox_inches='tight', dpi = fig.dpi)
