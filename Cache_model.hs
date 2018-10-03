@@ -6,8 +6,11 @@ import System.Random.Shuffle
 import Data.List
 import Data.List.Split
 
-import Data.Random
+import Data.Char  
+import Numeric
 
+import Data.Random
+import Data.Maybe
 --import Control.Monad.State
 import Control.Monad.IO.Class
 import Control.Monad.Trans.State
@@ -69,6 +72,46 @@ lru set trace = do
             r <- lru'(Trace (tail trace), CacheSetContent((0,h) : init set), Hit hit)
             return r
         where h = head trace
+
+ -- Least recently used
+plru :: RepPol
+plru set trace = do
+  (t, s, h) <- plru'(trace, set, Hit 0)
+  return (s, h)
+    where
+      plru' :: (Trace, CacheSetContent, HitNumber) -> IO(Trace, CacheSetContent, HitNumber)
+      plru' i@(Trace [], _, _) = do return i
+      plru' (Trace trace, CacheSetContent set, Hit hit) =
+        case (elemIndex h $ map (\(a,b) -> b) set) of
+          Just elem -> do
+            r <- plru'(Trace (tail trace), CacheSetContent((0,h) : (deleteN elem set)), Hit (hit + 1))
+            return r
+          Nothing -> do
+            (new_set, elem) <- plru_insert (associativity `div` 2) h set ""
+            r <- plru'(Trace (tail trace), CacheSetContent(new_set), Hit hit)
+            return r
+        where h = head trace
+
+plru_insert :: Int -> AddressIdentifier -> [(Int, AddressIdentifier)] -> String -> IO(([(Int, AddressIdentifier)], Int))
+plru_insert 0 address set list = do
+  let r = readBin list
+  return (set, r)
+plru_insert tier address set l = do
+  b <- randomRIO(0, 1)
+  let bin = if (a == 2) then b else a
+  if (bin == 0)
+    then do
+    (ret, r) <- plru_insert (if (tier == 1) then 0 else tier `div` 2) address (drop 1 set) (l++(show 0))
+    return (((if (a == 2) then a else 1), val) : ret, r)
+    else do
+    (ret, r) <- plru_insert (if (tier == 1) then 0 else tier `div` 2) address (drop tier set) (l++(show 1))
+    return (((if (a == 2) then a else 0), val):(take (tier - 1) $ tail set) ++ ret, r)
+  where
+    (a, val) = head set
+
+readBin :: String -> Int
+readBin = fromMaybe 0 . toBin
+  where toBin = fmap fst . listToMaybe . readInt 2 (`elem` "01") digitToInt
 
 -- Most recently used
 mru :: RepPol
@@ -169,7 +212,7 @@ type AdaptiveRepPol = SetAddresses -> IO(CacheSetContent, HitNumber)
 
 
  -- Static re-reference interval prediction
-m = 3
+
 -- Hit promotion policy = hp hit priority or fp frequency priority
 hp = True -- if hp is False, then fp
 
