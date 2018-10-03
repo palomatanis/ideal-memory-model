@@ -32,7 +32,7 @@ rangeTests :: Int
 rangeTests = 2 * associativity
 
 iterations :: Int
-iterations = 50
+iterations = 100
 
 -- Eviction strategies
 -- Range of values to test of C
@@ -49,9 +49,9 @@ eviction_strategies = filter (\(_, b, c) -> b >= c) $ [ (x,y,z) | x<-[cfrom..cto
 
 -- Calls the test for eviction with all the combinations of the eviction strategies
 main = do 
-  mapM execute [(lru, "lru"), (bip, "bip"), (lip, "lip"), (fifo, "fifo"), (mru, "mru"), (rr, "mru")]
+  mapM execute [(lru, "lru"), (bip, "bip"), (lip, "lip"), (fifo, "fifo"), (mru, "mru"), (rr, "rr")]
   where execute (pol, name) = do
-          mapM (\ev@(a, b, c) -> executeTestCongruent ("./adaptive/congruent_adaptive_eviction_test_" ++ (show iterations) ++ "it_512psel_v15_"++ name ++"_" ++ (show a) ++ "_" ++ (show b) ++ "_" ++ (show c)) pol [ev]) eviction_strategies
+          mapM (\ev@(a, b, c) -> executeTestCongruent ("./adaptive/congruent_adaptive_eviction_test_" ++ (show iterations) ++ "it_" ++ name ++"_v15_" ++ (show a) ++ "_" ++ (show b) ++ "_" ++ (show c)) pol [ev]) eviction_strategies
 
 -- path :: String
 -- path = "./adaptive/adaptive_eviction_test_50_lru_bip_1_4_4"

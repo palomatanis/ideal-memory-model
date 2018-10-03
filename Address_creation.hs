@@ -11,7 +11,7 @@ import Base
 -- initialSet = CacheSetContent (map AddressIdentifier $ take associativity $ repeat 0)
 
 initialSet :: Int -> CacheSetContent
-initialSet n = CacheSetContent ([AddressIdentifier 0,AddressIdentifier 0,AddressIdentifier 0,AddressIdentifier 0,AddressIdentifier 0,AddressIdentifier 0,AddressIdentifier 0,AddressIdentifier 0,AddressIdentifier 0,AddressIdentifier 0,AddressIdentifier 0,AddressIdentifier 0,AddressIdentifier 0,AddressIdentifier 0,AddressIdentifier 0,AddressIdentifier 0])
+initialSet n = CacheSetContent ([AddressIdentifier 0,AddressIdentifier 0,AddressIdentifier 0,AddressIdentifier 0,AddressIdentifier 0,AddressIdentifier 0,AddressIdentifier 0,AddressIdentifier 0,AddressIdentifier 0,AddressIdentifier 0,AddressIdentifier 0,AddressIdentifier 0,AddressIdentifier 0,AddressIdentifier 0,AddressIdentifier 0,AddressIdentifier n])
 
 
 list_random_sets :: Int -> (IO (Address)) -> IO ([Address])
