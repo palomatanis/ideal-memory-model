@@ -8,14 +8,22 @@ import Base
 
 m = 3 -- For SSRIP  
 initialSet :: Int -> Int -> CacheSetContent
-initialSet n v =  CacheSetContent(take v cs ++ [(2^m-1, AddressIdentifier n)] ++ drop (v + 1) cs)
-  where cs = take associativity $ repeat (2^m-1, AddressIdentifier 0)
+initialSet n v = CacheSetContent(take associativity $ repeat (2^m-1, AddressIdentifier 0))
+  
+-- m = 3 -- For SSRIP  
+-- initialSet :: Int -> Int -> CacheSetContent
+-- initialSet n v =  CacheSetContent(take v cs ++ [(2^m-2, AddressIdentifier n)] ++ drop (v + 1) cs)
+--   where cs = take associativity $ repeat (2^m-1, AddressIdentifier 0)
 
 initialSetPLRU :: Int -> Int -> CacheSetContent
-initialSetPLRU n v =  CacheSetContent(take v cs ++ [(1, AddressIdentifier n)] ++ drop (v + 1) cs)
-  where cs = take associativity $ repeat (1, AddressIdentifier 0)
+initialSetPLRU n v =  CacheSetContent(take associativity $ repeat (1, AddressIdentifier 0))
 
+initialSetRPLRU :: CacheSetContent
+initialSetRPLRU =  CacheSetContent $ (2, AddressIdentifier 0) : (take (associativity - 1)  $ repeat (1, AddressIdentifier 0))
 
+initialSetPLRUR :: CacheSetContent
+initialSetPLRUR  = CacheSetContent $ [(1,AddressIdentifier 0),(1,AddressIdentifier 0),(1,AddressIdentifier 0),(2,AddressIdentifier 0),(2,AddressIdentifier 0),(1,AddressIdentifier 0),(2,AddressIdentifier 0),(2,AddressIdentifier 0),(1,AddressIdentifier 0),(1,AddressIdentifier 0),(2,AddressIdentifier 0),(2,AddressIdentifier 0),(1,AddressIdentifier 0),(2,AddressIdentifier 0),(2,AddressIdentifier 0),(1,AddressIdentifier 0)]
+  
 -- initialSet :: Int -> CacheSetContent
 -- initialSet n = CacheSetContent ([AddressIdentifier 0,AddressIdentifier 0,AddressIdentifier 0,AddressIdentifier 0,AddressIdentifier 0,AddressIdentifier 0,AddressIdentifier 0,AddressIdentifier 0,AddressIdentifier 0,AddressIdentifier 0,AddressIdentifier 0,AddressIdentifier 0,AddressIdentifier 0,AddressIdentifier 0,AddressIdentifier 0,AddressIdentifier n])
 

@@ -20,6 +20,8 @@ import Base
 import Address_creation
 
 
+import Control.Concurrent
+
 ---- TLB
 -- TLB misses for a set of addresses
 tlb_misses :: [Int] -> Int
@@ -66,10 +68,10 @@ lru set trace = do
       lru' (Trace trace, CacheSetContent set, Hit hit) =
         case (elemIndex h $ map (\(a,b) -> b) set) of
           Just elem -> do
-            r <- lru'(Trace (tail trace), CacheSetContent((0,h) : (deleteN elem set)), Hit (hit + 1))
+            r <- lru'(Trace $ tail trace, CacheSetContent $ (0,h) : (deleteN elem set), Hit $ hit + 1)
             return r
           Nothing -> do
-            r <- lru'(Trace (tail trace), CacheSetContent((0,h) : init set), Hit hit)
+            r <- lru'(Trace $ tail trace, CacheSetContent $ (0,h) : init set, Hit hit)
             return r
         where h = head trace
 
@@ -84,31 +86,67 @@ plru set trace = do
       plru' (Trace trace, CacheSetContent set, Hit hit) =
         case (elemIndex h $ map (\(a,b) -> b) set) of
           Just elem -> do
-            r <- plru'(Trace (tail trace), CacheSetContent((0,h) : (deleteN elem set)), Hit (hit + 1))
+            new_set <- plru_find elem set
+            r <- plru'(Trace $ tail trace, CacheSetContent new_set, Hit $ hit + 1)
             return r
           Nothing -> do
-            (new_set, elem) <- plru_insert (associativity `div` 2) h set ""
-            r <- plru'(Trace (tail trace), CacheSetContent(new_set), Hit hit)
+            (up_set, elem) <- plru_insert set
+            let (reg,_) = up_set !! elem
+            let new_set = take elem up_set ++ [(reg, h)] ++ drop (elem + 1) up_set
+            r <- plru'(Trace $ tail trace, CacheSetContent new_set, Hit hit)
             return r
         where h = head trace
 
-plru_insert :: Int -> AddressIdentifier -> [(Int, AddressIdentifier)] -> String -> IO(([(Int, AddressIdentifier)], Int))
-plru_insert 0 address set list = do
-  let r = readBin list
-  return (set, r)
-plru_insert tier address set l = do
-  b <- randomRIO(0, 1)
-  let bin = if (a == 2) then b else a
-  if (bin == 0)
-    then do
-    (ret, r) <- plru_insert (if (tier == 1) then 0 else tier `div` 2) address (drop 1 set) (l++(show 0))
-    return (((if (a == 2) then a else 1), val) : ret, r)
-    else do
-    (ret, r) <- plru_insert (if (tier == 1) then 0 else tier `div` 2) address (drop tier set) (l++(show 1))
-    return (((if (a == 2) then a else 0), val):(take (tier - 1) $ tail set) ++ ret, r)
+        
+plru_insert :: [(Int, AddressIdentifier)] -> IO(([(Int, AddressIdentifier)], Int))
+plru_insert set = plru_insert' (associativity `div` 2) set ""
   where
-    (a, val) = head set
+    plru_insert' :: Int -> [(Int, AddressIdentifier)] -> String -> IO(([(Int, AddressIdentifier)], Int))
+    plru_insert' 0 set list = do
+      let r = readBin list
+      return (set, r)
+    plru_insert' tier set l = do
+      b <- randomRIO(0, 1)
+      let bin = if (a == 2) then b else a
+      if (bin == 0)
+        then do
+        (ret, r) <- plru_insert' (if (tier == 1) then 0 else tier `div` 2) (drop 1 set) (l++(show 0))
+        return (((if (a == 2) then a else 1), val) : ret, r)
+        else do
+        (ret, r) <- plru_insert' (if (tier == 1) then 0 else tier `div` 2) (drop tier set) (l++(show 1))
+        return (((if (a == 2) then a else 0), val):(take (tier - 1) $ tail set) ++ ret, r)
+          where
+            (a, val) = head set
 
+
+plru_find :: Int -> [(Int, AddressIdentifier)] -> IO([(Int, AddressIdentifier)])
+plru_find address set = plru_find' (associativity `div` 2) set (to_bin address)
+  where
+    plru_find' :: Int -> [(Int, AddressIdentifier)] -> [Int] -> IO([(Int, AddressIdentifier)])
+    plru_find' 0 set list = do return set
+    plru_find' tier set (l:ls) = do
+      if (l == 0)
+        then do
+        ret <- plru_find' (if (tier == 1) then 0 else tier `div` 2) (drop 1 set) ls
+        return (((if (a == 2) then a else 1), val) : ret)
+        else do
+        ret <- plru_find' (if (tier == 1) then 0 else tier `div` 2) (drop tier set) ls
+        return (((if (a == 2) then a else 0), val):(take (tier - 1) $ tail set) ++ ret)
+          where
+            (a, val) = head set
+
+
+to_bin :: Int -> [Int]
+to_bin n = to_length_bin $ to_bin' n
+  where
+    to_bin' :: Int -> [Int]
+    to_bin' 0 = []
+    to_bin' n | n `mod` 2 == 1 = to_bin' (n `div` 2) ++ [1]
+              | n `mod` 2 == 0 = to_bin' (n `div` 2) ++ [0]
+    to_length_bin :: [Int] -> [Int]
+    to_length_bin l = if ((length l) == (truncate $ logBase (fromIntegral 2) (fromIntegral associativity))) then l else to_length_bin (0:l)
+
+    
 readBin :: String -> Int
 readBin = fromMaybe 0 . toBin
   where toBin = fmap fst . listToMaybe . readInt 2 (`elem` "01") digitToInt
@@ -227,14 +265,14 @@ srrip set trace = do
         case (elemIndex h $ map (\(a,b) -> b) set) of
           Just elem -> do
             let (reg, el) = set !! elem
-            let new_cache_st = take elem set ++ [((if hp then 0 else (if reg > 0 then reg-1 else 0)), el)] ++ drop (elem + 1) set
+            let new_cache_st = take elem set ++ [((if hp then 0 else (if reg > 0 then reg-1 else 0)), h)] ++ drop (elem + 1) set
             r <- srrip'(Trace (tail trace), CacheSetContent(new_cache_st), Hit (hit + 1))
             return r
           Nothing ->
             case (elemIndex (2^m-1) $ map (\(a,b) -> a) set) of
               Just elem -> do -- There is a rrpv register with a (2^m-1)
                 let (reg, el) = set !! elem
-                let new_cache_st = take elem set ++ [(2^m-2, el)] ++ drop (elem + 1) set
+                let new_cache_st = take elem set ++ [(2^m-2, h)] ++ drop (elem + 1) set
                 r <- srrip'(Trace (tail trace), CacheSetContent(new_cache_st), Hit hit)
                 return r
               Nothing -> do
@@ -264,8 +302,8 @@ brrip set trace = do
                 let (reg, el) = set !! elem
                 b <- chance64 2
                 let new_cache_st = if b
-                      then (take elem set ++ [(2^m-2, el)] ++ drop (elem + 1) set)
-                      else (take elem set ++ [(2^m-1, el)] ++ drop (elem + 1) set)
+                      then (take elem set ++ [(2^m-2, h)] ++ drop (elem + 1) set)
+                      else (take elem set ++ [(2^m-1, h)] ++ drop (elem + 1) set)
                 r <- brrip'(Trace (tail trace), CacheSetContent(new_cache_st), Hit hit)
                 return r
               Nothing -> do
@@ -277,7 +315,6 @@ brrip set trace = do
 -- Calls the replacement policy with/without noise
 adaptiveCacheInsert :: SetAddresses -> CacheState -> IO(CacheState)
 adaptiveCacheInsert (SetAddresses addresses) fresh_state = do
---  let fresh_state = create_fresh_state pol1 pol2 setcontent 512
   case noise of
     True -> do
       -- The TLB misses should not be at the end
@@ -299,9 +336,6 @@ adaptivePolicy (SetAddresses ((LongAddress(id, Address x)):xs)) = do
   if (x == targetSet)
     then callPol id
     else callLeader id x (x `mod` ((2^cacheSet) `div` num_regions))
-  -- case x of
-  --   LongAddress (id, Address ts) -> callPol id
-  --   LongAddress (id, Address n) -> callLeader id n (n `mod` ((2^cacheSet) `div` num_regions))
   adaptivePolicy (SetAddresses xs)
 
 -- Calls the corresponding replacement policy for a victim address, as psel says. Updates the content of the victim, and number of hits

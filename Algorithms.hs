@@ -29,6 +29,15 @@ evicts_adapt set@(SetAddresses s) initial_cache_state eviction_strategy = do
   cs3@(_,_,_,_,Hit h3,_) <- adaptiveCacheInsert (SetAddresses [LongAddress((AddressIdentifier n), (Address 2))]) cs2
   let v = h3 == h2
   return (v, cs3)
+
+-- Eviction test for adaptive replacement policy
+evicts_adapt_count :: SetAddresses -> CacheState -> EvictionStrategy -> IO((Int, CacheState))
+evicts_adapt_count set@(SetAddresses s) initial_cache_state eviction_strategy = do
+  -- change initial set by set with the victim already in
+  let n = length s
+  cs2@(_,_,CacheSetContent csc,_,_,_) <- adaptiveCacheInsert (eviction_strategy_trace set eviction_strategy) initial_cache_state
+  let counted = length $ filter (\x -> (snd x) == AddressIdentifier 0) csc
+  return (counted, cs2)
   
 -- -- Eviction test for adaptive replacement policy
 -- evicts_adapt :: SetAddresses -> CacheState -> EvictionStrategy -> IO((Bool, CacheState))
@@ -61,7 +70,7 @@ eviction_strategy_trace (SetAddresses set) strategy = (SetAddresses (map (\x -> 
   where
     eviction_strategy_trace' :: [LongAddress] -> EvictionStrategy -> Int -> [Int]
     eviction_strategy_trace' [] (c, d, l) n = []
-    eviction_strategy_trace' set (c, d, l) n = (take (c * d) $ cycle [n..(n+d-1)]) ++ (if ((n + l) >= ((length set) - d)) then [] else eviction_strategy_trace' set (c, d, l) (n + l))
+    eviction_strategy_trace' set (c, d, l) n = (take (c * d) $ cycle [n..(n+d-1)]) ++ (if ((n + l) > ((length set) - d)) then [] else eviction_strategy_trace' set (c, d, l) (n + l)) -- before (n + l) >= ((length set) - d)
 
 -- Creates the set of addresses to test eviction with a certain eviction strategy
 eviction_strategy_trace_bis :: SetAddresses -> EvictionStrategy -> Int -> SetAddresses
