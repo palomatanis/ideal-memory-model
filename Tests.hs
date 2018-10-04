@@ -48,7 +48,7 @@ lto = 6
 eviction_strategies = filter (\(_, b, c) -> b >= c) $ [ (x,y,z) | x<-[cfrom..cto], y<-[dfrom..dto], z<-[lfrom..lto] ]
 --policies = [(lru, "lru"), (bip, "bip"), (lip, "lip"), (fifo, "fifo"), (mru, "mru"), (rr, "rr"), (srrip, "srrip"), (brrip, "brrip")]
 -- policies = [(lru, "lru"), (bip, "bip"), (lip, "lip"), (rr, "rr"), (srrip, "srrip"), (brrip, "brrip")]
-policies = [(plru, "plrur")]
+policies = [(plru, "plru")]
 victim_position = [0]
 --victim_position = [0..associativity-1]
           
@@ -195,7 +195,7 @@ create_fresh_state p1 p2 victim init = (p1, p2, victim, map (\x -> (x, (initialS
 test_adaptive_eviction_congruent :: RepPol ->  [EvictionStrategy] -> Int -> Int -> IO((Int, CacheState))
 test_adaptive_eviction_congruent pol1 es v number = do
   let r = congruent_long_address_set number
-  let fresh_cache_state = create_fresh_state pol1 pol1 initialSetPLRUR 512
+  let fresh_cache_state = create_fresh_state pol1 pol1 initialSetPLRU 512
   (ev, cs) <- test_adaptive_eviction_count' r (0, fresh_cache_state) es
   return ((associativity - ev, cs))
 --   return ((bool_to_int ev, cs))

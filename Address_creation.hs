@@ -15,8 +15,8 @@ initialSet n v = CacheSetContent(take associativity $ repeat (2^m-1, AddressIden
 -- initialSet n v =  CacheSetContent(take v cs ++ [(2^m-2, AddressIdentifier n)] ++ drop (v + 1) cs)
 --   where cs = take associativity $ repeat (2^m-1, AddressIdentifier 0)
 
-initialSetPLRU :: Int -> Int -> CacheSetContent
-initialSetPLRU n v =  CacheSetContent(take associativity $ repeat (1, AddressIdentifier 0))
+initialSetPLRU :: CacheSetContent
+initialSetPLRU =  CacheSetContent(take associativity $ repeat (1, AddressIdentifier 0))
 
 initialSetRPLRU :: CacheSetContent
 initialSetRPLRU =  CacheSetContent $ (2, AddressIdentifier 0) : (take (associativity - 1)  $ repeat (1, AddressIdentifier 0))
