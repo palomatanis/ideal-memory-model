@@ -4,6 +4,7 @@ import Base
 import Cache_model
 import Address_creation
 import Algorithms
+import ReplacementPolicies
 
 import System.Random
 import Control.Monad
@@ -48,19 +49,20 @@ lto = 6
 eviction_strategies = filter (\(_, b, c) -> b >= c) $ [ (x,y,z) | x<-[cfrom..cto], y<-[dfrom..dto], z<-[lfrom..lto] ]
 --policies = [(lru, "lru"), (plru, "plru"), (plru, "rplru"),(plru, "plrur"), (bip, "bip"), (lip, "lip"), (fifo, "fifo"), (mru, "mru"), (rr, "rr"), (srrip, "srrip"), (brrip, "brrip")]
 -- policies = [(lru, "lru"), (bip, "bip"), (lip, "lip"), (rr, "rr"), (srrip, "srrip"), (brrip, "brrip")]
-policies = [(bip, "bip")]
+policies = [(srrip, "srrip")]
 victim_position = [0]
 --victim_position = [0..associativity-1]
 
-bip_probabilities = [16,18..62]                  
+msrrip = [1..16]
+-- bip_probabilities = [16,18..62]                  
 -- Calls the test for eviction with all the combinations of the eviction strategies
 main = do
-  mapM executeV bip_probabilities
+  mapM executeV msrrip
   where
     executeV d = do
        mapM (\v -> mapM (execute d v) policies) victim_position
     execute d v (pol, name) = do
-          mapM (\ev@(a, b, c) -> executeTestCongruent ("./adaptive/congruent_adaptive_eviction_test_" ++ (show iterations) ++ "it_" ++ name ++ (show d)++"_64_count_" ++ (show a) ++ "_" ++ (show b) ++ "_" ++ (show c)) pol [ev] v d) eviction_strategies
+          mapM (\ev@(a, b, c) -> executeTestCongruent ("./adaptive/congruent_adaptive_eviction_test_" ++ (show iterations) ++ "it_" ++ name ++ "_m_" ++ (show d) ++"_count_" ++ (show a) ++ "_" ++ (show b) ++ "_" ++ (show c)) pol [ev] v d) eviction_strategies
 
 
 -- main = do
@@ -204,7 +206,7 @@ create_fresh_state p1 p2 victim init = (p1, p2, victim, map (\x -> (x, (initialS
 test_adaptive_eviction_congruent :: RepPol ->  [EvictionStrategy] -> Int -> Int -> Int -> IO((Int, CacheState))
 test_adaptive_eviction_congruent pol1 es v d number = do
   let r = congruent_long_address_set number
-  let fresh_cache_state = create_fresh_state pol1 pol1 (initialSet 0 0) 512
+  let fresh_cache_state = create_fresh_state pol1 pol1 (initialSet d 0) 512
   (ev, cs) <- test_adaptive_eviction_count' r (0, fresh_cache_state) es d
   return ((associativity - ev, cs))
 --   return ((bool_to_int ev, cs))

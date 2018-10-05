@@ -6,9 +6,9 @@ import Data.Random
 
 import Base
 
-m = 3 -- For SSRIP  
+-- m = 3 -- For SSRIP  
 initialSet :: Int -> Int -> CacheSetContent
-initialSet n v = CacheSetContent(take associativity $ repeat (2^m-1, AddressIdentifier 0))
+initialSet m v = CacheSetContent(take associativity $ repeat (2^m-1, AddressIdentifier 0))
   
 -- m = 3 -- For SSRIP  
 -- initialSet :: Int -> Int -> CacheSetContent
