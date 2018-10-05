@@ -45,10 +45,10 @@ cacheInsert policy set tr@(Trace t) total = do
       ev <- tlb_congruent $ expected_tlb_misses total
       let n = length t
       let new_trace = if (ev == 0) then tr else (Trace (t ++ (map AddressIdentifier [(n + 1)..(n + ev)])))
-      r <- policy set new_trace
+      r <- policy set new_trace 0
       return r
     False -> do
-      r <- policy set tr
+      r <- policy set tr 0
       return r
   
 -- Expected number of misses for a number of addresses
@@ -59,7 +59,7 @@ expected_tlb_misses n =
   
  -- Least recently used
 lru :: RepPol
-lru set trace = do
+lru set trace _ = do
   (t, s, h) <- lru'(trace, set, Hit 0)
   return (s, h)
     where
@@ -77,7 +77,7 @@ lru set trace = do
 
  -- Least recently used
 plru :: RepPol
-plru set trace = do
+plru set trace _ = do
   (t, s, h) <- plru'(trace, set, Hit 0)
   return (s, h)
     where
@@ -153,7 +153,7 @@ readBin = fromMaybe 0 . toBin
 
 -- Most recently used
 mru :: RepPol
-mru set trace = do
+mru set trace _ = do
   (t, s, h) <- mru'(trace, set, Hit 0)
   return (s, h)
     where
@@ -171,7 +171,7 @@ mru set trace = do
 
 -- Random replacement
 rr :: RepPol
-rr set trace = do
+rr set trace _ = do
   (t, s, h) <- rr'(trace, set, Hit 0)
   return (s, h)
     where
@@ -190,7 +190,7 @@ rr set trace = do
 
 -- First in first out
 fifo :: RepPol
-fifo set trace = do
+fifo set trace _ = do
   (t, s, h) <- fifo'(trace, set, Hit 0)
   return (s, h)
     where
@@ -208,7 +208,7 @@ fifo set trace = do
 
 -- -- LRU insertion policy
 lip :: RepPol
-lip set trace = do
+lip set trace _ = do
   (t, s, h) <- lip'(trace, set, Hit 0)
   return (s, h)
     where
@@ -226,7 +226,7 @@ lip set trace = do
 
 -- Bimodal insertion policy
 bip :: RepPol
-bip set trace = do
+bip set trace bip_probability = do
   (t, s, h) <- bip'(trace, set, Hit 0)
   return (s, h)
     where
@@ -238,7 +238,7 @@ bip set trace = do
             r <- bip'(Trace (tail trace), CacheSetContent (if (elem == ((length set) - 1)) then ((0,h) : (init set)) else set), Hit (hit + 1))
             return r
           Nothing -> do
-            b <- chance64 2
+            b <- chance64 bip_probability
             if b
               then bip'(Trace (tail trace), CacheSetContent ((0,h) : init set), Hit hit)
               else bip'(Trace (tail trace), CacheSetContent (init set ++ [(0,h)]), Hit hit)
@@ -255,7 +255,7 @@ type AdaptiveRepPol = SetAddresses -> IO(CacheSetContent, HitNumber)
 hp = True -- if hp is False, then fp
 
 srrip :: RepPol
-srrip set trace = do
+srrip set trace _ = do
   (t, s, h) <- srrip'(trace, set, Hit 0)
   return (s, h)
     where
@@ -283,7 +283,7 @@ srrip set trace = do
 
 -- Bimodal RRIP - puts new blocks with a distant rrpv (2^m-1) most of the time, but sometimes in long rrpv (2^m-2)
 brrip :: RepPol
-brrip set trace = do
+brrip set trace bip_probability = do
   (t, s, h) <- brrip'(trace, set, Hit 0)
   return (s, h)
     where
@@ -300,7 +300,7 @@ brrip set trace = do
             case (elemIndex (2^m-1) $ map (\(a,b) -> a) set) of
               Just elem -> do -- There is a rrpv register with a (2^m-1)
                 let (reg, el) = set !! elem
-                b <- chance64 2
+                b <- chance64 bip_probability
                 let new_cache_st = if b
                       then (take elem set ++ [(2^m-2, h)] ++ drop (elem + 1) set)
                       else (take elem set ++ [(2^m-1, h)] ++ drop (elem + 1) set)
@@ -313,51 +313,51 @@ brrip set trace = do
         where h = head trace
                    
 -- Calls the replacement policy with/without noise
-adaptiveCacheInsert :: SetAddresses -> CacheState -> IO(CacheState)
-adaptiveCacheInsert (SetAddresses addresses) fresh_state = do
+adaptiveCacheInsert :: SetAddresses -> CacheState -> Int -> IO(CacheState)
+adaptiveCacheInsert (SetAddresses addresses) fresh_state d = do
   case noise of
     True -> do
       -- The TLB misses should not be at the end
       (SetAddresses t) <- tlb_set (expected_tlb_misses $ length addresses) $ length addresses
       let new_trace = SetAddresses (addresses ++ t)
-      r <- evalStateT (adaptivePolicy new_trace) fresh_state
+      r <- evalStateT (adaptivePolicy new_trace d) fresh_state
       return r
     False -> do
-      r <- evalStateT (adaptivePolicy (SetAddresses addresses)) fresh_state
+      r <- evalStateT (adaptivePolicy (SetAddresses addresses) d) fresh_state
       return r
 
 -- Is the one that inserts all the addresses, the ones in the victim addresses on one side and leaders on the other
-adaptivePolicy :: SetAddresses -> StateT CacheState IO (CacheState)
-adaptivePolicy (SetAddresses []) = do
+adaptivePolicy :: SetAddresses -> Int -> StateT CacheState IO (CacheState)
+adaptivePolicy (SetAddresses []) _ = do
   cs@(p1, p2, csc, _, h, psel) <- get
   return cs
-adaptivePolicy (SetAddresses ((LongAddress(id, Address x)):xs)) = do
+adaptivePolicy (SetAddresses ((LongAddress(id, Address x)):xs)) d = do
   (p1, p2, csc, l, h, psel) <- get
   if (x == targetSet)
-    then callPol id
-    else callLeader id x (x `mod` ((2^cacheSet) `div` num_regions))
-  adaptivePolicy (SetAddresses xs)
+    then callPol id d
+    else callLeader id x (x `mod` ((2^cacheSet) `div` num_regions)) d
+  adaptivePolicy (SetAddresses xs) d
 
 -- Calls the corresponding replacement policy for a victim address, as psel says. Updates the content of the victim, and number of hits
 -- (new_csc, new_hn, new_psel) <- callPol csc id psel    
-callPol :: AddressIdentifier -> StateT CacheState IO ()
-callPol id = do
+callPol :: AddressIdentifier -> Int -> StateT CacheState IO ()
+callPol id d = do
   (p1, p2, csc, l, Hit h, psel) <- get
   let p = if (psel > 512) then p2 else p1
-  (new_cacheContent, Hit hit) <- liftIO $ p csc (Trace [id])
+  (new_cacheContent, Hit hit) <- liftIO $ p csc (Trace [id]) d
   put (p1, p2, new_cacheContent, l, Hit (h+hit), psel)
 
 -- Calls replacement policy for a leader address, updates psel and state of the whole cache 
 -- (new_l, new_psel) <- callLeader id n l psel 0/1
-callLeader :: AddressIdentifier -> Int -> Int -> StateT CacheState IO ()
-callLeader id n mod = do
+callLeader :: AddressIdentifier -> Int -> Int -> Int -> StateT CacheState IO ()
+callLeader id n mod d = do
   (p1, p2, csc, l, h, psel) <- get
   if ((mod == 0) || (mod == 1)) then do
     let (a, rest) = take_from_list (\(x, _) -> x == n) l
     case a of
       Just (n, cacheContent) -> do
         let p = if (mod == 0) then p1 else p2
-        (new_cacheContent, Hit hit) <- liftIO $ p cacheContent $ Trace [id]
+        (new_cacheContent, Hit hit) <- liftIO $ p cacheContent (Trace [id]) d
         let new_psel = saturating_psel $ psel + (if (mod == 0) then (1-hit) else (-1+hit))
         let new_cachestate = (p1, p2, csc, ((n, new_cacheContent): rest), h, new_psel)
         put (new_cachestate)

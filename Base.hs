@@ -33,7 +33,7 @@ data LongAddress = LongAddress (AddressIdentifier, Address)
 data SetAddresses = SetAddresses [LongAddress]
   deriving (Read, Show, Eq)
 
-type RepPol = CacheSetContent -> Trace -> IO(CacheSetContent, HitNumber)
+type RepPol = CacheSetContent -> Trace -> Int -> IO(CacheSetContent, HitNumber)
 
 type CacheState = (RepPol, RepPol, CacheSetContent, [(Int, CacheSetContent)], HitNumber, Int)
 
@@ -104,3 +104,7 @@ num_regions = 32
 
 targetSet :: Int
 targetSet = 2
+
+-- bip_probability :: Int
+-- bip_probability = 14
+-- --bip_probability = 2
