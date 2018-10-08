@@ -33,7 +33,7 @@ rangeTests :: Int
 rangeTests = 2 * associativity
 
 iterations :: Int
-iterations = 100
+iterations = 50
 
 -- Eviction strategies
 -- Range of values to test of C
@@ -49,7 +49,7 @@ lto = 6
 eviction_strategies = filter (\(_, b, c) -> b >= c) $ [ (x,y,z) | x<-[cfrom..cto], y<-[dfrom..dto], z<-[lfrom..lto] ]
 --policies = [(lru, "lru"), (plru, "plru"), (plru, "rplru"),(plru, "plrur"), (bip, "bip"), (lip, "lip"), (fifo, "fifo"), (mru, "mru"), (rr, "rr"), (srrip, "srrip"), (brrip, "brrip")]
 -- policies = [(lru, "lru"), (bip, "bip"), (lip, "lip"), (rr, "rr"), (srrip, "srrip"), (brrip, "brrip")]
-policies = [(srrip, "srrip")]
+policies = [(srrip, "srripfp")]
 victim_position = [0]
 --victim_position = [0..associativity-1]
 
