@@ -26,7 +26,7 @@ numberCongAddresses_From = 1
 -- at least 'dto'addresses
 
 numberCongAddresses_To :: Int
-numberCongAddresses_To = 22
+numberCongAddresses_To = 32
 
 
 rangeTests :: Int
@@ -37,23 +37,24 @@ iterations = 100
 
 -- Eviction strategies
 -- Range of values to test of C
-cfrom = 1
+cfrom = 0
 cto = 6
 -- Range of values to test of D
-dfrom = 1
+dfrom = 0
 dto = 6
 -- Range of values to test of L
-lfrom = 1
+lfrom = 0
 lto = 6
 
 -- eviction_strategies = filter (\(_, b, c) -> b >= c) $ [ (x,y,z) | x<-[cfrom..cto], y<-[dfrom..dto], z<-[lfrom..lto] ]
--- eviction_strategies = filter (\(a, b, c) -> (b >= c) && ((a == 0) || (b == 0) ||(c == 0))) $ [ (x,y,z) | x<-[cfrom..cto], y<-[dfrom..dto], z<-[lfrom..lto] ]
-eviction_strategies = filter (\([(c1,_,_,n1,_),(c2,_,_,n2,_)], _) -> (c1 /= c2) && (n1 /= n2)) [ ([a,b], 1) | a <- es, b <- es ]
-  where es = [ (c, 1, 1, n, 1) | c <- [cfrom..cto], n <- [numberCongAddresses_From..numberCongAddresses_To] ]
+eviction_strategies = filter (\(a, b, c) -> (b >= c) && ((a == 0) || (b == 0) ||(c == 0))) $ [ (x,y,z) | x<-[cfrom..cto], y<-[dfrom..dto], z<-[lfrom..lto] ]
+-- eviction_strategies = filter (\([(c1,_,_,n1,_),(c2,_,_,n2,_)], _) -> (c1 /= c2) && (n1 /= n2)) [ ([a,b], 1) | a <- es, b <- es ]
+  -- where es = [ (c, 1, 1, n, 1) | c <- [cfrom..cto], n <- [numberCongAddresses_From..numberCongAddresses_To] ]
 
 --policies = [(lru, "lru"), (plru, "plru"), (plru, "rplru"),(plru, "plrur"), (bip, "bip"), (lip, "lip"), (fifo, "fifo"), (mru, "mru"), (rr, "rr"), (srrip, "srrip"), (brrip, "brrip")]
 
-policies = [(lru, "lru"), (bip, "bip"), (lip, "lip"), (rr, "rr"), (srrip, "srrip"), (brrip, "brrip")]
+-- policies = [(lru, "lru"), (bip, "bip"), (lip, "lip"), (rr, "rr"), (srrip, "srrip"), (brrip, "brrip")]
+policies = [(plru, "plru")]
 
 -- policies = [(srrip, "srrip")]
 
@@ -64,28 +65,25 @@ msrrip = [3]
 -- msrrip = [1..16]
 -- bip_probabilities = [16,18..62]                  
 -- Calls the test for eviction with all the combinations of the eviction strategies
+
+-- test = test_adaptive_eviction
+test = test_adaptive_eviction_congruent
+
 main = do
   mapM executeV msrrip
   where
     executeV d = do
        mapM (\v -> mapM (execute d v) policies) victim_position
     execute d v (pol, name) = do
-          mapM (\ev@([(a1,b1,c1,n1,_), (a2,b2,c2,n2,_)], _) -> executeTestCongruentExtra ("./adaptive/extra_patterns/congruent_adaptive_eviction_test_" ++ (show iterations) ++ "it_" ++ name ++"_count_a_" ++ (show a1) ++ "_" ++ (show b1) ++ "_" ++ (show c1) ++ (show n1) ++ "_b_" ++ (show a2) ++ "_" ++ (show b2) ++ "_" ++ (show c2) ++ (show n2)) pol ev d) eviction_strategies
-
+          mapM (\ev@(a,b,c) -> executeTestCongruent ("./adaptive/extra_patterns/congruent_adaptive_eviction_test_" ++ (show iterations) ++ "it_" ++ name ++"_count_" ++ (show a) ++ "_" ++ (show b) ++ "_" ++ (show c)) pol ev v d) eviction_strategies
 
 -- main = do
---   mapM (\v -> mapM (execute v) policies d) victim_position
+--   mapM executeV msrrip
 --   where
---     execute v (pol, name) d = do
---           mapM (\ev@(a, b, c) -> executeTestCongruent ("./adaptive/congruent_adaptive_eviction_test_" ++ (show iterations) ++ "it_" ++ name ++"_count_" ++ (show a) ++ "_" ++ (show b) ++ "_" ++ (show c)) pol [ev] v d) eviction_strategies
-          
-
--- -- Calls the test for eviction with all the combinations of the eviction strategies
--- main = do
---   mapM (\v -> mapM (execute v) policies) victim_position
---   where
---     execute v (pol, name) = do
---           mapM (\ev@(a, b, c) -> executeTestCongruent ("./adaptive/congruent_adaptive_eviction_test_" ++ (show iterations) ++ "it_" ++ name ++"_v" ++ (show v) ++ "_" ++ (show a) ++ "_" ++ (show b) ++ "_" ++ (show c)) pol [ev] v) eviction_strategies
+--     executeV d = do
+--        mapM (\v -> mapM (execute d v) policies) victim_position
+--     execute d v (pol, name) = do
+--           mapM (\ev@([(a1,b1,c1,n1,_), (a2,b2,c2,n2,_)], _) -> executeTestCongruentExtra ("./adaptive/extra_patterns/congruent_adaptive_eviction_test_" ++ (show iterations) ++ "it_" ++ name ++"_count_a_" ++ (show a1) ++ "_" ++ (show b1) ++ "_" ++ (show c1) ++ "_" ++ (show n1) ++ "_b_" ++ (show a2) ++ "_" ++ (show b2) ++ "_" ++ (show c2) ++ (show n2)) pol ev d) eviction_strategies
 
           
 -- path :: String
@@ -93,6 +91,13 @@ main = do
 
 -- Save tests
 -- Performs test of eviction for adaptive replacement policies, saves the averages of the results
+
+congruence = True
+
+-- rangeAddresses = [numberAddrToTest_From, (numberAddrToTest_From + rangeTests)..numberAddrToTest_To]
+rangeAddresses = [numberCongAddresses_From..numberCongAddresses_To]
+
+
 executeTestAdaptive path p1 p2 es v d = do
   m <- test_complete $ test_adaptive_eviction p1 p2 es v d
   let (ev, hits, psel) = unzip3 m
@@ -102,42 +107,27 @@ executeTestAdaptive path p1 p2 es v d = do
   outh <- openFile (path ++ "_hits") WriteMode
   mapM (hPutStrLn outh . show) hits
   hClose outh
-  outh <- openFile (path ++ "_psel") WriteMode
-  mapM (hPutStrLn outh . show) psel
-  hClose outh
-    where
-      test_complete test = do
-        p <- mapM (do_test_of test) [numberAddrToTest_From, (numberAddrToTest_From + rangeTests)..numberAddrToTest_To]
-        return p  
-      do_test_of f n = do
-        res <- replicateM iterations $ f n
-        let (es, cs) = unzip res
-        let (_,_,_,_,hss, pss) = unzip6 cs
-        let hs = map (\(Hit x) -> x) hss
-        -- let (es, hs, pss) = unzip3 res
-        return ((mean es, mean hs, mean pss))
+  if (not congruence) then do
+    outh <- openFile (path ++ "_psel") WriteMode
+    mapM (hPutStrLn outh . show) psel
+    hClose outh
+    else return()
+      where
+        test_complete test = do
+          p <- mapM (do_test_of test) rangeAddresses
+          return p  
+        do_test_of f n = do
+          res <- replicateM iterations $ f n
+          let (es, cs) = unzip res
+          let (_,_,_,_,hss, pss) = unzip6 cs
+          let hs = map (\(Hit x) -> x) hss
+          -- let (es, hs, pss) = unzip3 res
+          return ((mean es, mean hs, mean pss))
 
 
 executeTestCongruent path p1 es v d = do
-  m <- test_complete $ test_adaptive_eviction_congruent p1 es v d
-  let (ev, hits, _) = unzip3 m
-  outh <- openFile path WriteMode
-  mapM (hPutStrLn outh . show) ev
-  hClose outh
-  outh <- openFile (path ++ "_hits") WriteMode
-  mapM (hPutStrLn outh . show) hits
-  hClose outh
-    where
-      test_complete test = do
-        p <- mapM (do_test_of test) [numberCongAddresses_From..numberCongAddresses_To]
-        return p  
-      do_test_of f n = do
-        res <- replicateM iterations $ f n
-        let (es, cs) = unzip res
-        let (_,_,_,_,hss, pss) = unzip6 cs
-        let hs = map (\(Hit x) -> x) hss
-        -- let (es, hs, pss) = unzip3 res
-        return ((mean es, mean hs, mean pss))
+  executeTestAdaptive path p1 p1 es v d
+
 
 executeTestCongruentExtra path p1 es d = do
   (ev, hits, _) <- do_test_of $ test_adaptive_eviction_congruent_extra p1 es d
@@ -155,19 +145,7 @@ executeTestCongruentExtra path p1 es d = do
         let hs = map (\(Hit x) -> x) hss
         -- let (es, hs, pss) = unzip3 res
         return ((mean es, mean hs, mean pss))
-        
--- executeTestAdaptive path p1 p2 es = do
---   m@[(a, b, c)] <- test_complete $ test_adaptive_eviction p1 p2 es
---   let (ev, hits, psel) = unzip3 m
---   writeFile path ((unwords $ map show ev) ++ "\n")
---     where
---       test_complete test = do
---         p <- mapM (do_test_of test) [numberAddrToTest_From, (numberAddrToTest_From + rangeTests)..numberAddrToTest_To]
---         return p  
---       do_test_of f n = do
---         res <- replicateM iterations $ f n
---         let (es, hs, pss) = unzip3 res
---         return ((mean es, mean hs, mean pss))
+
 
 -- Execute all tests and save results to file
 executeTestGeneric path p1 = do
@@ -201,22 +179,23 @@ test_eviction pol number = do
   e <- evicts r pol
   return (bool_to_int e)
 
--- -- Creates set of addresses, and a random victim, checks if the set is an eviction set for the victim
--- test_adaptive_eviction :: RepPol -> RepPol -> [EvictionStrategy] -> Int -> IO((Int, CacheState))
--- test_adaptive_eviction pol1 pol2 [es] number = do
---   r <- long_address_set number
---   let fresh_cache_state = create_fresh_state pol1 pol2 initialSet 512
---   (ev, cs) <- evicts_adapt r fresh_cache_state es
---   return ((bool_to_int ev, cs))
-
 -- Creates set of addresses, and a random victim, checks if the set is an eviction set for the victim
-test_adaptive_eviction :: RepPol -> RepPol -> [EvictionStrategy] -> Int -> Int -> Int -> IO((Int, CacheState))
+test_adaptive_eviction :: RepPol -> RepPol -> EvictionStrategy -> Int -> Int -> Int -> IO((Int, CacheState))
 test_adaptive_eviction pol1 pol2 es v d number = do
   r <- long_address_set number
   let fresh_cache_state = create_fresh_state pol1 pol2 (initialSet number v) 512
-  (ev, cs) <- test_adaptive_eviction' r (False, fresh_cache_state) es d
+  (ev, cs) <- evicts_adapt r fresh_cache_state es d
   return ((bool_to_int ev, cs))
 
+--- NOW THE VICTIM IS ALREADY INSIDE THE CACHE        
+-- Creates set of addresses, and a random victim, checks if the set is an eviction set for the victim
+test_adaptive_eviction_congruent :: RepPol ->  EvictionStrategy -> Int -> Int -> Int -> IO((Int, CacheState))
+test_adaptive_eviction_congruent pol1 es v d number = do
+  let r = congruent_long_address_set number 1
+  let fresh_cache_state = create_fresh_state pol1 pol1 (initialSetPLRU) 512
+  (ev, cs) <- evicts_adapt_count r fresh_cache_state es d
+  return ((associativity - ev, cs))
+  
   
 -- Creates a new state of the hole cache, from the set number of the victim, and the initial state of the victim cache set
 create_fresh_state :: RepPol -> RepPol -> CacheSetContent -> Int -> CacheState
@@ -236,24 +215,6 @@ test_adaptive_eviction_congruent_extra pol1 es d = do
   -- (ev, cs) <- test_adaptive_eviction_count' (0, fresh_cache_state) es d
   return ((associativity - ev, cs))
 
---- NOW THE VICTIM IS ALREADY INSIDE THE CACHE        
--- Creates set of addresses, and a random victim, checks if the set is an eviction set for the victim
-test_adaptive_eviction_congruent :: RepPol ->  [EvictionStrategy] -> Int -> Int -> Int -> IO((Int, CacheState))
-test_adaptive_eviction_congruent pol1 es v d number = do
-  let r = congruent_long_address_set number 1
-  let fresh_cache_state = create_fresh_state pol1 pol1 (initialSet d 0) 512
-  (ev, cs) <- test_adaptive_eviction_count' r (0, fresh_cache_state) es d
-  return ((associativity - ev, cs))
-
-
-test_adaptive_eviction' :: SetAddresses -> (Bool, CacheState) -> [EvictionStrategy] -> Int -> IO((Bool, CacheState))
-test_adaptive_eviction' _ st [] _ = do
-  return st
-test_adaptive_eviction' set (_, state) (est:ests) d = do
-  res <- evicts_adapt set state est d
-  test_adaptive_eviction' set res ests d
-
-
 generate_trace :: EvictionStrategyExtra -> IO(SetAddresses)
 generate_trace e = do
   r <- generate_trace' e [] 1
@@ -269,14 +230,7 @@ generate_trace e = do
       let trace = concat $ replicate repL tr
       rr <- generate_trace' (es, repG) (trace ++ lis) (n+s)
       return rr
-
-test_adaptive_eviction_count' :: SetAddresses -> (Int, CacheState) -> [EvictionStrategy] -> Int -> IO((Int, CacheState))
-test_adaptive_eviction_count' _ st [] _ = do
-  return st
-test_adaptive_eviction_count' set (_, state) (est:ests) d = do
-  res <- evicts_adapt_count  set state est d
-  test_adaptive_eviction_count' set res ests d
-  
+      
 -- Creates set of addresses, and a random victim, checks if the set is an eviction set for the victim
 test_assoc :: RepPol -> Int -> IO(Int)
 test_assoc pol number = do
