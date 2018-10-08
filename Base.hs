@@ -39,6 +39,9 @@ type CacheState = (RepPol, RepPol, CacheSetContent, [(Int, CacheSetContent)], Hi
 
 type EvictionStrategy = (Int, Int, Int)
 
+-- ([(c,d,l,s,rep),(c',d',l',s',rep')], reptot)
+type EvictionStrategyExtra = ([(Int, Int, Int, Int, Int)], Int)
+
 create_set :: Int -> Address
 create_set = Address
 

@@ -4,6 +4,8 @@ import System.Random.Shuffle
 import Data.List
 import Data.Random
 
+import System.Random
+
 import Base
 import Address_creation
 import Cache_model
@@ -25,7 +27,8 @@ evicts_adapt :: SetAddresses -> CacheState -> EvictionStrategy -> Int -> IO((Boo
 evicts_adapt set@(SetAddresses s) initial_cache_state eviction_strategy d = do
   -- change initial set by set with the victim already in
   let n = length s
-  cs2@(_,_,_,_,Hit h2,_) <- adaptiveCacheInsert (eviction_strategy_trace set eviction_strategy) initial_cache_state d
+  tr <- eviction_strategy_trace set eviction_strategy
+  cs2@(_,_,_,_,Hit h2,_) <- adaptiveCacheInsert  tr initial_cache_state d
   cs3@(_,_,_,_,Hit h3,_) <- adaptiveCacheInsert (SetAddresses [LongAddress((AddressIdentifier n), (Address 2))]) cs2 d
   let v = h3 == h2
   return (v, cs3)
@@ -35,10 +38,18 @@ evicts_adapt_count :: SetAddresses -> CacheState -> EvictionStrategy -> Int -> I
 evicts_adapt_count set@(SetAddresses s) initial_cache_state eviction_strategy d = do
   -- change initial set by set with the victim already in
   let n = length s
-  cs2@(_,_,CacheSetContent csc,_,_,_) <- adaptiveCacheInsert (eviction_strategy_trace set eviction_strategy) initial_cache_state d
+  tr <- eviction_strategy_trace set eviction_strategy
+  cs2@(_,_,CacheSetContent csc,_,_,_) <- adaptiveCacheInsert tr initial_cache_state d
   let counted = length $ filter (\x -> (snd x) == AddressIdentifier 0) csc
   return (counted, cs2)
-  
+
+
+  -- Eviction test for adaptive replacement policy with new patterns
+evicts_adapt_count_extra :: SetAddresses -> CacheState -> Int -> IO((Int, CacheState))
+evicts_adapt_count_extra trace initial_cache_state d = do
+  cs2@(_,_,CacheSetContent csc,_,_,_) <- adaptiveCacheInsert trace initial_cache_state d
+  let counted = length $ filter (\x -> (snd x) == AddressIdentifier 0) csc
+  return (counted, cs2)
 -- -- Eviction test for adaptive replacement policy
 -- evicts_adapt :: SetAddresses -> CacheState -> EvictionStrategy -> IO((Bool, CacheState))
 -- evicts_adapt set@(SetAddresses s) initial_cache_state eviction_strategy = do
@@ -65,12 +76,29 @@ evicts_adapt_bis set@(SetAddresses s) initial_cache_state eviction_strategy d = 
 
         
 -- Creates the set of addresses to test eviction with a certain eviction strategy
-eviction_strategy_trace :: SetAddresses -> EvictionStrategy -> SetAddresses
-eviction_strategy_trace (SetAddresses set) strategy = (SetAddresses (map (\x -> set !! x) $ eviction_strategy_trace' set strategy 0))
+eviction_strategy_trace :: SetAddresses -> EvictionStrategy -> IO(SetAddresses)
+eviction_strategy_trace (SetAddresses set) strategy = do
+  r <- eviction_strategy_trace' set strategy 0
+  return $ SetAddresses $ map (\x -> set !! x) r
   where
-    eviction_strategy_trace' :: [LongAddress] -> EvictionStrategy -> Int -> [Int]
-    eviction_strategy_trace' [] (c, d, l) n = []
-    eviction_strategy_trace' set (c, d, l) n = (take (c * d) $ cycle [n..(n+d-1)]) ++ (if ((n + l) > ((length set) - d)) then [] else eviction_strategy_trace' set (c, d, l) (n + l)) -- before (n + l) >= ((length set) - d)
+    eviction_strategy_trace' :: [LongAddress] -> EvictionStrategy -> Int -> IO([Int])
+    eviction_strategy_trace' [] (c, d, l) n = do return []
+    eviction_strategy_trace' set (c', d', l') n = do
+      rc <- randomRIO (0,associativity)
+      let c = if (c' == 0) then rc else c'
+      rd <- randomRIO (0,length set)
+      let d = if (d' == 0) then rd else d'
+      rl <- randomRIO (0,d)
+      let l = if (l' == 0) then rl else l'
+      let ret1 = (take (c * d) $ cycle [n..(n+d-1)])
+      let boo = (n + l) > ((length set) - d)
+      case boo of
+        True -> return ret1
+        False -> do
+          ret <- eviction_strategy_trace' set (c', d', l') (n + l') -- before (n + l) >= ((length set) - d)
+          return (ret1 ++ ret)
+      
+    
 
 -- Creates the set of addresses to test eviction with a certain eviction strategy
 eviction_strategy_trace_bis :: SetAddresses -> EvictionStrategy -> Int -> SetAddresses
