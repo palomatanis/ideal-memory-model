@@ -59,8 +59,8 @@ eviction_strategies = [ ([a,b], rep) | a <- es, b <- es, rep <- [1,2] ]
 --policies = [(lru, "lru"), (plru, "plru"), (plru, "rplru"),(plru, "plrur"), (bip, "bip"), (lip, "lip"), (fifo, "fifo"), (mru, "mru"), (rr, "rr"), (srrip, "srrip"), (brrip, "brrip")]
 
 -- policies = [(plru, "plrur")]
-policies = [(lru, "lru"), (bip, "bip"), (lip, "lip"), (rr, "rr"), (srrip, "srrip"), (brrip, "brrip")]
--- policies = [(plru, "plru")]
+-- policies = [(lru, "lru"), (bip, "bip"), (lip, "lip"), (rr, "rr"), (srrip, "srrip"), (brrip, "brrip")]
+policies = [(plru, "rplru")]
 
 -- policies = [(srrip, "srrip")]
 
@@ -218,7 +218,7 @@ create_fresh_state p1 p2 victim init = (p1, p2, victim, map (\x -> (x, (initialS
 -- Creates set of addresses, and a random victim, checks if the set is an eviction set for the victim
 test_adaptive_eviction_congruent_extra :: RepPol ->  EvictionStrategyExtra -> Int -> IO((Int, CacheState))
 test_adaptive_eviction_congruent_extra pol1 es d = do
-  let fresh_cache_state = create_fresh_state pol1 pol1 (initialSet d 0) 512
+  let fresh_cache_state = create_fresh_state pol1 pol1 initialSetRPLRU 512
   trace <- generate_trace es
   (ev,cs) <- evicts_adapt_count_extra trace fresh_cache_state d
   return ((associativity - ev, cs))
