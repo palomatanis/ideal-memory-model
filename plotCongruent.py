@@ -2,86 +2,120 @@ import os
 import numpy as np
 import matplotlib.pyplot as plt
 
+import os.path
 
 
 
-directory = "/home/paloma.pedregal/memory-model/adaptive/"
+directory = "/home/paloma.pedregal/memory-model/adaptive/extra_patterns/"
 
 filesToPlot = "congruent_adaptive_eviction_test_100it_"
+
+saveDirectory = "/home/paloma.pedregal/memory-model/adaptive/figures/extra_patterns/congruent_eviction_strategies_"
 
 # my_list = os.listdir(directory)
 
 # files = [x.split(filesToPlot, 1)[1] for x in my_list if (filesToPlot in x) and ("_psel" not in x) and ("hits" not in x)]
 
-rang = np.arange(6, 31, 1).tolist()
+rang = np.arange(6, 33, 1).tolist()
+# rang = np.arange(30, 33, 1).tolist()
 
 def num_accesses (eviction_strategy):
     c = int(eviction_strategy[0])
     d = int(eviction_strategy[2])
     l = int(eviction_strategy[4])
-    return [(x//l)*c*d if x else 0 for x in rang]
+    if (c*d*l == 0):
+        return [0 for x in rang]
+    else:
+        return [(x//l)*c*d if x else 0 for x in rang]
+
+def num_accesses_long (eviction_strategy):
+    thelist = eviction_strategy.split('_')
+    c1 = thelist[1]
+    d1 = thelist[2]
+    l1 = thelist[3]
+    n1 = thelist[4]
+#    l1, n1 = thelist[3][0], thelist[3][1:]
+    c2 = thelist[6]
+    d2 = thelist[7]
+    l2 = thelist[8]
+    n2 = thelist[9]
+    return (num_accesses (c1 + "_" +  d1 + "_" + l1))[int(n1) - 1 ] + (num_accesses (c2 + "_" +  d2 + "_" + l2))[int(n2) - 1]
+
 
 def numCongruent (n):
-    return n - 5
+    return n - 6
 
 plt.rcParams.update({'figure.max_open_warning': 0})
 
-# for fs in files:
-#     with open(directory + filesToPlot + fs) as f:
-#         myList = [float(x) for x in f.read().splitlines()]
-#         fig, ax1 = plt.subplots()
-#         ax1.plot(rang, myList)
-#         ax1.grid()
-#         ax1.set_ylim([0.0, 1.0])
-#         color = 'tab:grey'
-#         plt.title(fs)
-#         plt.ylabel('Eviction rate')
-#         plt.xlabel('Number of addresses')
-#         #plt.show()
-#         fig.savefig(directory + "/figures/adaptive_congruent" + fs, dpi = fig.dpi)
+
+policies = ('lru', 'plru', 'rplru', 'plrur', 'bip', 'rr', 'srrip', 'brrip')
+# policies = ('lru', 'bip', 'rr', 'srrip', 'brrip')
+
+# policies = ["srrip_m_" + str(n) for n in range (1,17)]
+
+# policies = ["bip" + str(n) for n in range (2,64,2)]
+# victims = ["v" + str(n) for n in range (0,15)]
+# cols = [p + "_" + v for p in policies for v in victims]
+
+# cols = ('lip', 'bip2', 'bip4', 'bip6', 'bip8', 'bip10', 'bip12', 'bip14', 'bip16', 'bip18', 'bip20', 'bip22', 'bip24', 'bip26', 'bip28', 'bip30', 'bip32', 'bip34', 'bip36', 'bip38', 'bip40', 'bip42', 'bip44', 'bip46', 'bip48', 'bip50', 'bip52', 'bip54', 'bip56', 'bip58', 'bip60', 'bip62', 'lru')
+
+# cols = policies
+
+# rows = [(str(c) + "_" + str(d) + "_" + str(l)) for c in range (0,7) for d in range (0,7) for l in range (0,7) if (d >= l)]
+# rows = [(str(c) + "_" + str(d) + "_" + str(l)) for c in range (1,7) for d in range (1,7) for l in range (1,7) if (d >= l)]
+# rows = [("a_" + str(c) + "_1_1" + str(n) + "_b_" + str(c2) + "_1_1" + str(n2)) for c in range (1,7) for c2 in range (1,7) for n in range (1,23) for n2 in range (1,23) if ((c != c2) and (n != n2))]
+
+repetitions = [1,2]
+
+rows = [("a_" + str(c) + "_1_1_" + str(n)) for c in range (1,4) for n in range (1,23)]
+cols = [("b_" + str(c) + "_1_1_" + str(n) + "_" + str(rep)) for rep in repetitions for c in range (1,4) for n in range (1,23)]
 
 
-# policies = ('lru', 'fifo', 'bip', 'lip', 'mru', 'rr')
-policies = ('lru', 'bip', 'rr', 'srrip', 'brrip')
-
-victims = ["v0", "v1", "v2", "v3", "v4", "v5", "v6", "v7", "v8", "v9", "v10", "v11", "v12", "v13", "v14", "v15"]
-
-cols = [p + "_" + v for p in policies for v in victims]
-
-
-# rows = files
-
-# the_table = plt.table(cellText=cell_text,
-#                       rowLabels=rows,
-#                       rowColours=colors,
-#                       colLabels=columns,
-#                       loc='bottom')
-
-rows = ["1_1_1", "1_2_1", "1_2_2", "1_3_1", "1_3_2", "1_3_3", "1_4_1", "1_4_2", "1_4_3", "1_4_4", "1_5_1", "1_5_2", "1_5_3", "1_5_4", "1_5_5", "1_6_1", "1_6_2", "1_6_3", "1_6_4", "1_6_5", "1_6_6", "2_1_1", "2_2_1", "2_2_2", "2_3_1", "2_3_2", "2_3_3", "2_4_1", "2_4_2", "2_4_3", "2_4_4", "2_5_1", "2_5_2", "2_5_3", "2_5_4", "2_5_5", "2_6_1", "2_6_2", "2_6_3", "2_6_4", "2_6_5", "2_6_6", "3_1_1", "3_2_1", "3_2_2", "3_3_1", "3_3_2", "3_3_3", "3_4_1", "3_4_2", "3_4_3", "3_4_4", "3_5_1", "3_5_2", "3_5_3", "3_5_4", "3_5_5", "3_6_1", "3_6_2", "3_6_3", "3_6_4", "3_6_5", "3_6_6", "4_1_1", "4_2_1", "4_2_2", "4_3_1", "4_3_2", "4_3_3", "4_4_1", "4_4_2", "4_4_3", "4_4_4", "4_5_1", "4_5_2", "4_5_3", "4_5_4", "4_5_5", "4_6_1", "4_6_2", "4_6_3", "4_6_4", "4_6_5", "4_6_6", "5_1_1", "5_2_1", "5_2_2", "5_3_1", "5_3_2", "5_3_3", "5_4_1", "5_4_2", "5_4_3", "5_4_4", "5_5_1", "5_5_2", "5_5_3", "5_5_4", "5_5_5", "5_6_1", "5_6_2", "5_6_3", "5_6_4", "5_6_5", "5_6_6", "6_1_1", "6_2_1", "6_2_2", "6_3_1", "6_3_2", "6_3_3", "6_4_1", "6_4_2", "6_4_3", "6_4_4", "6_5_1", "6_5_2", "6_5_3", "6_5_4", "6_5_5", "6_6_1", "6_6_2", "6_6_3", "6_6_4", "6_6_5", "6_6_6"] #"10x1_1_1"]
-  
-
-for i in range (6, 32):
-    print (i)
-    elem = numCongruent (i)
-    # Number of misses
+for pol in policies:
+    elem = 0
     rowsDataMisses = []
     rowsDataEviction = []
-    for s in rows:
+    for r in rows:
         rowElemMisses = []
         rowElemEviction = []
-        for pol in cols:
-            openDir = directory + filesToPlot + pol + "_" + s
-            with open (openDir + "_hits") as f:
-                rowElemMisses.append (([float('%.3f'%(num_accesses(s)[elem] - (float(x)))) for x in f.read().splitlines()][elem]))
-            with open (openDir) as f:
-                rowElemEviction.append ([float('%.3f'%(float(x))) for x in f.read().splitlines()][elem])
+        for c in cols:
+            fileToOpen = r + "_" + c
+            openDir = directory + filesToPlot + pol + "_count_" + fileToOpen
+            if (os.path.exists(openDir)):
+                with open (openDir + "_hits") as f:
+                    rowElemMisses.append (([float('%.3f'%(num_accesses_long(fileToOpen) - (float(x)))) for x in f.read().splitlines()][elem]))
+                with open (openDir) as f:
+                    rowElemEviction.append ([float('%.3f'%(float(x))) for x in f.read().splitlines()][elem])
+            else:
+                print(openDir)
+                rowElemMisses.append(0.0)
+                rowElemEviction.append(0.0)
         rowsDataMisses.append(rowElemMisses)
         rowsDataEviction.append(rowElemEviction)        
+
+    # for i in rang:
+    # elem = numCongruent (i)
+    # # Number of misses
+    # rowsDataMisses = []
+    # rowsDataEviction = []
+    # for s in rows:
+    #     rowElemMisses = []
+    #     rowElemEviction = []
+    #     for pol in policies:
+    #         openDir = directory + filesToPlot +  pol + "_count_" + s
+    #         print (openDir)
+    #         with open (openDir + "_hits") as f:
+    #             rowElemMisses.append (([float('%.3f'%(num_accesses_long(s) - (float(x)))) for x in f.read().splitlines()][elem]))
+    #         with open (openDir) as f:
+    #             rowElemEviction.append ([float('%.3f'%(float(x))) for x in f.read().splitlines()][elem])
+    #     rowsDataMisses.append(rowElemMisses)
+    #     rowsDataEviction.append(rowElemEviction) 
         
         
     # vals = [[int(j) for j in i] for i in rowsData]    
     # normal = plt.Normalize(vals.min()-1, vals.max()+1)  
-    saveDir = directory + "figures/congruent_eviction_strategies_" + str(i)
+    # saveDir = directory + saveDirectory + str(i)
+    saveDir = saveDirectory + pol
 
     print ("a")
     
@@ -95,9 +129,23 @@ for i in range (6, 32):
     ax.axis('off')
 
     clust_data = rowsDataMisses
-    ax.table(cellText=clust_data,rowLabels=rows, colLabels=cols, loc='center', colWidths=[0.1 for x in cols], cellColours=plt.cm.YlGnBu(normal(vals))) ## colormaps: pink, bone, cool, hot
+    myTable = ax.table(cellText=clust_data,rowLabels=rows, colLabels=cols, loc='center', colWidths=[0.2 for x in cols], cellColours=plt.cm.YlGnBu(normal(vals))) ## colormaps: pink, bone, cool, hot
     #plt.title(str(i) + " congruent addresses")
     # plt.show()
+    
+    for key, cell in myTable.get_celld().items():
+        if key in [(0,n) for n in (list(range (0,22)) + list(range(44, 66)) + list(range(88, 110)))] :
+            #cell.set_linewidth(2)
+            cell.set_facecolor("paleVioletRed")
+        elif key in [(0,n) for n in (list(range (22, 44)) + list(range(66,88)) + list(range(110, 132)))] :
+            cell.set_facecolor("Gold")
+        elif key in [(n,-1) for n in (list(range (1,23)) + list(range(45, 67)))] :
+            cell.set_facecolor("paleVioletRed")
+        elif key in [(n,-1) for n in (list(range (23, 45)))] :
+            cell.set_facecolor("Gold")
+        cell.set_height(0.15)
+
+    
     plt.tight_layout()
     fig.savefig(saveDir + "_misses", bbox_inches='tight', dpi = fig.dpi)
 
@@ -113,8 +161,20 @@ for i in range (6, 32):
     ax.axis('off')
 
     clust_data = rowsDataEviction
-    ax.table(cellText=clust_data,rowLabels=rows, colLabels=cols, loc='center', colWidths=[0.1 for x in cols], cellColours=plt.cm.YlGnBu(normal(vals))) ## colormaps: pink, bone, cool, hot
+    myTable = ax.table(cellText=clust_data,rowLabels=rows, colLabels=cols, loc='center', colWidths=[0.2 for x in cols], cellColours=plt.cm.YlGnBu(normal(vals))) ## colormaps: pink, bone, cool, hot
     # plt.title(str(i) + " congruent addresses")
     # plt.show()
+    for key, cell in myTable.get_celld().items():
+        if key in [(0,n) for n in (list(range (0,22)) + list(range(44, 66)) + list(range(88, 110)))] :
+            #cell.set_linewidth(2)
+            cell.set_facecolor("paleVioletRed")
+        elif key in [(0,n) for n in (list(range (22, 44)) + list(range(66,88)) + list(range(110, 132)))] :
+            cell.set_facecolor("Gold")
+        elif key in [(n,-1) for n in (list(range (1,23)) + list(range(45, 67)))] :
+            cell.set_facecolor("paleVioletRed")
+        elif key in [(n,-1) for n in (list(range (23, 45)))] :
+            cell.set_facecolor("Gold")
+        cell.set_height(0.15)
+        
     plt.tight_layout()
     fig.savefig(saveDir, bbox_inches='tight', dpi = fig.dpi)

@@ -1,0 +1,46 @@
+\begin{thebibliography}{1}
+
+\bibitem{qc2}
+Introduction to quickcheck.
+\newblock \url{https://wiki.haskell.org/Introduction_to_QuickCheck1}.
+
+\bibitem{qc1}
+Quickcheck: Automatic testing of haskell programs.
+\newblock \url{http://hackage.haskell.org/package/QuickCheck}.
+
+\bibitem{qc3}
+Test.quickcheck haskell package.
+\newblock
+  \url{http://hackage.haskell.org/package/QuickCheck-2.11.3/docs/Test-QuickCheck.html}.
+
+\bibitem{claessen2011quickcheck}
+Koen Claessen and John Hughes.
+\newblock Quickcheck: a lightweight tool for random testing of haskell
+  programs.
+\newblock {\em Acm sigplan notices}, 46(4):53--64, 2011.
+
+\bibitem{jaleel2010high}
+Aamer Jaleel, Kevin~B Theobald, Simon~C Steely~Jr, and Joel Emer.
+\newblock High performance cache replacement using re-reference interval
+  prediction (rrip).
+\newblock In {\em ACM SIGARCH Computer Architecture News}, volume~38, pages
+  60--71. ACM, 2010.
+
+\bibitem{liu2015last}
+Fangfei Liu, Yuval Yarom, Qian Ge, Gernot Heiser, and Ruby~B Lee.
+\newblock Last-level cache side-channel attacks are practical.
+\newblock In {\em Security and Privacy (SP), 2015 IEEE Symposium on}, pages
+  605--622. IEEE, 2015.
+
+\bibitem{wong2015intel}
+Henry Wong.
+\newblock Intel ivy bridge cache replacement policy.
+\newblock {\em Retrieved on July}, 16:149, 2015.
+
+\bibitem{yarom2014flush}
+Yuval Yarom and Katrina Falkner.
+\newblock Flush+ reload: A high resolution, low noise, l3 cache side-channel
+  attack.
+\newblock In {\em USENIX Security Symposium}, pages 719--732, 2014.
+
+\end{thebibliography}
