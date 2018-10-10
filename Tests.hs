@@ -59,10 +59,8 @@ eviction_strategies = map (\(c, n) -> ([(c,1,1,n,1)],1)) $ [ (c,n) | c <- [cfrom
 --   where es = [ (c, 1, 1, n, 1) | c <- [cfrom..cto], n <- [numberCongAddresses_From..numberCongAddresses_To] ]
 
 --policies = [(lru, "lru"), (plru, "plru"), (plru, "rplru"),(plru, "plrur"), (bip, "bip"), (lip, "lip"), (fifo, "fifo"), (mru, "mru"), (rr, "rr"), (srrip, "srrip"), (brrip, "brrip")]
--- policies = [(plru, "plrur")]
--- policies = [(srrip, "srrip")]
+policies = [(plru, "plru")]
 
-policies = [(srrip, "srrip_hp"), (brrip, "brrip_hp")]
 -- policies = [(lru, "lru"), (bip, "bip"), (lip, "lip"), (rr, "rr"), (srrip, "srrip_fp"), (brrip, "brrip_fp"), (mru, "mru"), (fifo, "fifo")]
 
 
@@ -70,18 +68,6 @@ victim_position = [0]
 --victim_position = [0..associativity-1]
 
 m_srrip = [2]
--- msrrip = [1..16]
--- bip_probabilities = [16,18..62]                  
--- Calls the test for eviction with all the combinations of the eviction strategies
-
-
--- main = do
---   mapM executeV m_srrip
---   where
---     executeV d = do
---        mapM (\v -> mapM (execute d v) policies) victim_position
---     execute d v (pol, name) = do
---       mapM (\ev@(a,b,c) -> executeTestCongruent ("./adaptive/extra_patterns/congruent_adaptive_eviction_test_" ++ (show iterations) ++ "it_" ++ name ++"_count_" ++ (show a) ++ "_" ++ (show b) ++ "_" ++ (show c)) pol pol ev v d) eviction_strategies
 
 
 main = do
@@ -92,23 +78,7 @@ main = do
     execute d v (pol, name) = do
           mapM (\ev@([(c,_,_,n,_)], _) -> executeTestCongruentExtra ("./adaptive/assoc8/congruent_deep_eviction_" ++ (show iterations) ++ "it_" ++ name ++"_pattern_" ++ (show c) ++ "_rep_" ++ (show n) ++ "_congruent_addresses") pol ev d) eviction_strategies
 
--- main = do
---   mapM executeV m_srrip
---   where
---     executeV d = do
---        mapM (\v -> mapM (execute d v) policies) victim_position
---     execute d v (pol, name) = do
---           mapM (\ev@([(a1,b1,c1,n1,_), (a2,b2,c2,n2,_)], rep) -> executeTestCongruentExtra ("./adaptive/extra_patterns/congruent_adaptive_eviction_test_" ++ (show iterations) ++ "it_" ++ name ++"_count_a_" ++ (show a1) ++ "_" ++ (show b1) ++ "_" ++ (show c1) ++ "_" ++ (show n1) ++ "_b_" ++ (show a2) ++ "_" ++ (show b2) ++ "_" ++ (show c2) ++ "_" ++ (show n2) ++ "_" ++ (show rep)) pol ev d) eviction_strategies
-          
-          
--- path :: String
--- path = "./adaptive/adaptive_eviction_test_50_lru_bip_1_4_4"
-
--- Save tests
--- Performs test of eviction for adaptive replacement policies, saves the averages of the results
-
 congruence = True
-
 -- rangeAddresses = [numberAddrToTest_From, (numberAddrToTest_From + rangeTests)..numberAddrToTest_To]
 rangeAddresses = [numberCongAddresses_From..numberCongAddresses_To]
 
@@ -212,7 +182,8 @@ test_adaptive_eviction pol1 pol2 es v d number = do
 test_adaptive_eviction_congruent :: RepPol -> RepPol -> EvictionStrategy -> Int -> Int -> Int -> IO((Int, CacheState))
 test_adaptive_eviction_congruent pol1 _ es v d number = do
   let r = congruent_long_address_set number 1
-  fresh_cache_state <- create_fresh_state pol1 pol1 (initialSetPLRU) 512
+  init <- initialSetPLRU
+  fresh_cache_state <- create_fresh_state pol1 pol1 init 512
   (ev, cs) <- evicts_adapt_count r fresh_cache_state es d
   return ((associativity - ev, cs))
   

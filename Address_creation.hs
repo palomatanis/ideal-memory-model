@@ -22,8 +22,12 @@ initialSet m v = do
 -- initialSet n v =  CacheSetContent(take v cs ++ [(2^m-2, AddressIdentifier n)] ++ drop (v + 1) cs)
 --   where cs = take associativity $ repeat (2^m-1, AddressIdentifier 0)
 
-initialSetPLRU :: CacheSetContent
-initialSetPLRU =  CacheSetContent(take associativity $ repeat (1, AddressIdentifier 0))
+initialSetPLRU :: IO(CacheSetContent)
+initialSetPLRU = do
+  l <- replicateM associativity $ randomRIO(0, 1)
+  let r = map (\x -> (x, AddressIdentifier 0)) l
+  return $ CacheSetContent r
+
 
 initialSetRPLRU :: CacheSetContent
 initialSetRPLRU =  CacheSetContent $ (2, AddressIdentifier 0) : (take (associativity - 1)  $ repeat (1, AddressIdentifier 0))
