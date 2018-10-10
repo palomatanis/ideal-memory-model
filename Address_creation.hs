@@ -29,15 +29,24 @@ initialSetPLRU = do
   return $ CacheSetContent r
 
 
-initialSetRPLRU :: CacheSetContent
-initialSetRPLRU =  CacheSetContent $ (2, AddressIdentifier 0) : (take (associativity - 1)  $ repeat (1, AddressIdentifier 0))
+initialSetRPLRU :: IO(CacheSetContent)
+initialSetRPLRU = do
+  (CacheSetContent ini) <- initialSetPLRU
+  return $ CacheSetContent $ (2, AddressIdentifier 0) : (tail ini)
 
-initialSetPLRUR :: CacheSetContent
-initialSetPLRUR  = CacheSetContent $ [(1,AddressIdentifier 0),(1,AddressIdentifier 0),(1,AddressIdentifier 0),(2,AddressIdentifier 0),(2,AddressIdentifier 0),(1,AddressIdentifier 0),(2,AddressIdentifier 0),(2,AddressIdentifier 0),(1,AddressIdentifier 0),(1,AddressIdentifier 0),(2,AddressIdentifier 0),(2,AddressIdentifier 0),(1,AddressIdentifier 0),(2,AddressIdentifier 0),(2,AddressIdentifier 0),(1,AddressIdentifier 0)]
-  
--- initialSet :: Int -> CacheSetContent
--- initialSet n = CacheSetContent ([AddressIdentifier 0,AddressIdentifier 0,AddressIdentifier 0,AddressIdentifier 0,AddressIdentifier 0,AddressIdentifier 0,AddressIdentifier 0,AddressIdentifier 0,AddressIdentifier 0,AddressIdentifier 0,AddressIdentifier 0,AddressIdentifier 0,AddressIdentifier 0,AddressIdentifier 0,AddressIdentifier 0,AddressIdentifier n])
-
+initialSetPLRUR :: IO(CacheSetContent)
+initialSetPLRUR  = do
+  let init = [1,1,1,2,2,1,2,2,1,1,2,2,1,2,2,1]
+  rr <- mapM ran init
+  let r =  map (\x -> (x, AddressIdentifier 0)) rr
+  return $ CacheSetContent r
+    where
+      ran :: Int -> IO(Int)
+      ran n = do
+        if (n == 2) then return 2
+          else do
+          c <- randomRIO(0,1)
+          return c
 
 list_random_sets :: Int -> (IO (Address)) -> IO ([Address])
 list_random_sets number randomizer = replicateM number randomizer

@@ -59,7 +59,7 @@ eviction_strategies = map (\(c, n) -> ([(c,1,1,n,1)],1)) $ [ (c,n) | c <- [cfrom
 --   where es = [ (c, 1, 1, n, 1) | c <- [cfrom..cto], n <- [numberCongAddresses_From..numberCongAddresses_To] ]
 
 --policies = [(lru, "lru"), (plru, "plru"), (plru, "rplru"),(plru, "plrur"), (bip, "bip"), (lip, "lip"), (fifo, "fifo"), (mru, "mru"), (rr, "rr"), (srrip, "srrip"), (brrip, "brrip")]
-policies = [(plru, "plru")]
+policies = [(plru, "plrur")]
 
 -- policies = [(lru, "lru"), (bip, "bip"), (lip, "lip"), (rr, "rr"), (srrip, "srrip_fp"), (brrip, "brrip_fp"), (mru, "mru"), (fifo, "fifo")]
 
@@ -204,7 +204,7 @@ create_fresh_state p1 p2 victim init = do
 -- Creates set of addresses, and a random victim, checks if the set is an eviction set for the victim
 test_adaptive_eviction_congruent_extra :: RepPol ->  EvictionStrategyExtra -> Int -> IO((Int, CacheState))
 test_adaptive_eviction_congruent_extra pol1 es d = do
-  init <- initialSet d d
+  init <- initialSetPLRUR
   fresh_cache_state <- create_fresh_state pol1 pol1 init 512
   trace <- generate_trace es  
   (ev,cs) <- evicts_adapt_count_extra trace fresh_cache_state d
