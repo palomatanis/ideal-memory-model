@@ -88,7 +88,8 @@ free_cache = 2^free_cache_bits
   
 -- associativity (number of blocks per cache set)
 associativity :: Int
-associativity = 16
+associativity = 8
+--associativity = 16
 
 ------ TLB
 -- Has to be multiple of tlb associativity

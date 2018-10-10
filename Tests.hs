@@ -26,7 +26,7 @@ numberCongAddresses_From = 1
 -- at least 'dto'addresses
 
 numberCongAddresses_To :: Int
-numberCongAddresses_To = 22
+numberCongAddresses_To = 16
 
 
 rangeTests :: Int
@@ -38,7 +38,8 @@ iterations = 100
 -- Eviction strategies
 -- Range of values to test of C
 cfrom = 1
-cto = 3
+cto = 4
+
 -- Range of values to test of D
 dfrom = 1
 dto = 6
@@ -48,26 +49,27 @@ lto = 6
 
 
 -- eviction_strategies = filter (\(a, b, c) -> (b >= c) && ((a == 0) || (b == 0) ||(c == 0))) $ [ (x,y,z) | x<-[cfrom..cto], y<-[dfrom..dto], z<-[lfrom..lto] ]
--- eviction_strategies = filter (\(_, b, c) -> b >= c) $ [ (x,y,z) | x<-[cfrom..cto], y<-[dfrom..dto], z<-[lfrom..lto] ]
+
+eviction_strategies = map (\(c, n) -> ([(c,1,1,n,1)],1)) $ [ (c,n) | c <- [cfrom..cto],  n <- [numberCongAddresses_From..numberCongAddresses_To] ]
 
 -- eviction_strategies = filter (\([(c1,_,_,n1,_),(c2,_,_,n2,_)], _) -> (c1 == c2) || (n1 == n2)) [ ([a,b], 1) | a <- es, b <- es ]
 --   where es = [ (c, 1, 1, n, 1) | c <- [cfrom..cto], n <- [numberCongAddresses_From..numberCongAddresses_To] ]
 
-eviction_strategies = [ ([a,b], rep) | a <- es, b <- es, rep <- [1,2] ]
-  where es = [ (c, 1, 1, n, 1) | c <- [cfrom..cto], n <- [numberCongAddresses_From..numberCongAddresses_To] ]
+-- eviction_strategies = [ ([a,b], rep) | a <- es, b <- es, rep <- [3, 4] ]
+--   where es = [ (c, 1, 1, n, 1) | c <- [cfrom..cto], n <- [numberCongAddresses_From..numberCongAddresses_To] ]
 
 --policies = [(lru, "lru"), (plru, "plru"), (plru, "rplru"),(plru, "plrur"), (bip, "bip"), (lip, "lip"), (fifo, "fifo"), (mru, "mru"), (rr, "rr"), (srrip, "srrip"), (brrip, "brrip")]
-
 -- policies = [(plru, "plrur")]
--- policies = [(lru, "lru"), (bip, "bip"), (lip, "lip"), (rr, "rr"), (srrip, "srrip"), (brrip, "brrip")]
-policies = [(plru, "rplru")]
-
 -- policies = [(srrip, "srrip")]
+
+policies = [(srrip, "srrip_hp"), (brrip, "brrip_hp")]
+-- policies = [(lru, "lru"), (bip, "bip"), (lip, "lip"), (rr, "rr"), (srrip, "srrip_fp"), (brrip, "brrip_fp"), (mru, "mru"), (fifo, "fifo")]
+
 
 victim_position = [0]
 --victim_position = [0..associativity-1]
 
-m_srrip = [3]
+m_srrip = [2]
 -- msrrip = [1..16]
 -- bip_probabilities = [16,18..62]                  
 -- Calls the test for eviction with all the combinations of the eviction strategies
@@ -88,8 +90,16 @@ main = do
     executeV d = do
        mapM (\v -> mapM (execute d v) policies) victim_position
     execute d v (pol, name) = do
-          mapM (\ev@([(a1,b1,c1,n1,_), (a2,b2,c2,n2,_)], rep) -> executeTestCongruentExtra ("./adaptive/extra_patterns/congruent_adaptive_eviction_test_" ++ (show iterations) ++ "it_" ++ name ++"_count_a_" ++ (show a1) ++ "_" ++ (show b1) ++ "_" ++ (show c1) ++ "_" ++ (show n1) ++ "_b_" ++ (show a2) ++ "_" ++ (show b2) ++ "_" ++ (show c2) ++ "_" ++ (show n2) ++ "_" ++ (show rep)) pol ev d) eviction_strategies
+          mapM (\ev@([(c,_,_,n,_)], _) -> executeTestCongruentExtra ("./adaptive/assoc8/congruent_deep_eviction_" ++ (show iterations) ++ "it_" ++ name ++"_pattern_" ++ (show c) ++ "_rep_" ++ (show n) ++ "_congruent_addresses") pol ev d) eviction_strategies
 
+-- main = do
+--   mapM executeV m_srrip
+--   where
+--     executeV d = do
+--        mapM (\v -> mapM (execute d v) policies) victim_position
+--     execute d v (pol, name) = do
+--           mapM (\ev@([(a1,b1,c1,n1,_), (a2,b2,c2,n2,_)], rep) -> executeTestCongruentExtra ("./adaptive/extra_patterns/congruent_adaptive_eviction_test_" ++ (show iterations) ++ "it_" ++ name ++"_count_a_" ++ (show a1) ++ "_" ++ (show b1) ++ "_" ++ (show c1) ++ "_" ++ (show n1) ++ "_b_" ++ (show a2) ++ "_" ++ (show b2) ++ "_" ++ (show c2) ++ "_" ++ (show n2) ++ "_" ++ (show rep)) pol ev d) eviction_strategies
+          
           
 -- path :: String
 -- path = "./adaptive/adaptive_eviction_test_50_lru_bip_1_4_4"
@@ -192,7 +202,8 @@ test_eviction pol number = do
 test_adaptive_eviction :: RepPol -> RepPol -> EvictionStrategy -> Int -> Int -> Int -> IO((Int, CacheState))
 test_adaptive_eviction pol1 pol2 es v d number = do
   r <- long_address_set number
-  let fresh_cache_state = create_fresh_state pol1 pol2 (initialSet number v) 512
+  init_set <- initialSet number v
+  fresh_cache_state <- create_fresh_state pol1 pol2 init_set 512
   (ev, cs) <- evicts_adapt r fresh_cache_state es d
   return ((bool_to_int ev, cs))
 
@@ -201,25 +212,30 @@ test_adaptive_eviction pol1 pol2 es v d number = do
 test_adaptive_eviction_congruent :: RepPol -> RepPol -> EvictionStrategy -> Int -> Int -> Int -> IO((Int, CacheState))
 test_adaptive_eviction_congruent pol1 _ es v d number = do
   let r = congruent_long_address_set number 1
-  let fresh_cache_state = create_fresh_state pol1 pol1 (initialSetPLRU) 512
+  fresh_cache_state <- create_fresh_state pol1 pol1 (initialSetPLRU) 512
   (ev, cs) <- evicts_adapt_count r fresh_cache_state es d
   return ((associativity - ev, cs))
   
   
 -- Creates a new state of the hole cache, from the set number of the victim, and the initial state of the victim cache set
-create_fresh_state :: RepPol -> RepPol -> CacheSetContent -> Int -> CacheState
-create_fresh_state p1 p2 victim init = (p1, p2, victim, map (\x -> (x, (initialSet 0 0)))(l0++l1), Hit 0, init)
-  where l0 = [0, ((2^cacheSet)`div` num_regions)..possible_caches]
-        l1 = map (+1) l0
-        possible_caches = if noise then (2^cacheSet) else (2^free_cache_bits) -1
+create_fresh_state :: RepPol -> RepPol -> CacheSetContent -> Int -> IO(CacheState)
+create_fresh_state p1 p2 victim init = do
+  init_set <- initialSet 0 0 
+  let init_list = map (\x -> (x, init_set))(l0++l1)
+  return (p1, p2, victim, init_list , Hit 0, init)
+    where
+      l0 = [0, ((2^cacheSet)`div` num_regions)..possible_caches]
+      l1 = map (+1) l0
+      possible_caches = if noise then (2^cacheSet) else (2^free_cache_bits) -1
 
 
 --- NOW THE VICTIM IS ALREADY INSIDE THE CACHE        
 -- Creates set of addresses, and a random victim, checks if the set is an eviction set for the victim
 test_adaptive_eviction_congruent_extra :: RepPol ->  EvictionStrategyExtra -> Int -> IO((Int, CacheState))
 test_adaptive_eviction_congruent_extra pol1 es d = do
-  let fresh_cache_state = create_fresh_state pol1 pol1 initialSetRPLRU 512
-  trace <- generate_trace es
+  init <- initialSet d d
+  fresh_cache_state <- create_fresh_state pol1 pol1 init 512
+  trace <- generate_trace es  
   (ev,cs) <- evicts_adapt_count_extra trace fresh_cache_state d
   return ((associativity - ev, cs))
 

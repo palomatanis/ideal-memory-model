@@ -6,9 +6,16 @@ import Data.Random
 
 import Base
 
--- m = 3 -- For SSRIP  
-initialSet :: Int -> Int -> CacheSetContent
-initialSet m v = CacheSetContent(take associativity $ repeat (2^m-1, AddressIdentifier 0))
+
+initialSet :: Int -> Int -> IO(CacheSetContent)
+initialSet m v = do
+  l <- replicateM associativity $ randomRIO(0, 2^m-1)
+  let r = map (\x -> (x, AddressIdentifier 0)) l
+  return $ CacheSetContent r
+
+-- -- m = 3 -- For SSRIP  
+-- initialSet :: Int -> Int -> CacheSetContent
+-- initialSet m v = CacheSetContent(take associativity $ repeat (randomRIO(0, 2^m-1), AddressIdentifier 0))
   
 -- m = 3 -- For SSRIP  
 -- initialSet :: Int -> Int -> CacheSetContent

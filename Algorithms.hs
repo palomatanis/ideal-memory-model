@@ -17,7 +17,8 @@ evicts :: SetState -> RepPol -> IO(Bool)
 evicts (SetState (c, n)) policy = do
    let (Trace t) = consecutive_trace c
    -- Check c+1 in initial set
-   (s, _) <- cacheInsert policy (initialSet (c + 1) 0) (Trace ((AddressIdentifier (c + 1)) : t)) n
+   i <- initialSet (c + 1) 0
+   (s, _) <- cacheInsert policy i (Trace ((AddressIdentifier (c + 1)) : t)) n
    (_, Hit h2) <- cacheInsert policy s (Trace [(AddressIdentifier(c + 1))]) 1
    let v = h2 == 0
    return v
