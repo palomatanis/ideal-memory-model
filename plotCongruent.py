@@ -6,15 +6,6 @@ import os.path
 
 
 
-directory = "/home/paloma.pedregal/memory-model/adaptive/extra_patterns/"
-
-filesToPlot = "congruent_adaptive_eviction_test_100it_"
-
-saveDirectory = "/home/paloma.pedregal/memory-model/adaptive/figures/extra_patterns/congruent_eviction_strategies_"
-
-# my_list = os.listdir(directory)
-
-# files = [x.split(filesToPlot, 1)[1] for x in my_list if (filesToPlot in x) and ("_psel" not in x) and ("hits" not in x)]
 
 rang = np.arange(6, 33, 1).tolist()
 # rang = np.arange(30, 33, 1).tolist()
@@ -41,46 +32,37 @@ def num_accesses_long (eviction_strategy):
     n2 = thelist[9]
     return (num_accesses (c1 + "_" +  d1 + "_" + l1))[int(n1) - 1 ] + (num_accesses (c2 + "_" +  d2 + "_" + l2))[int(n2) - 1]
 
-
 def numCongruent (n):
     return n - 6
 
 plt.rcParams.update({'figure.max_open_warning': 0})
 
-
 policies = ('lru', 'plru', 'rplru', 'plrur', 'bip', 'rr', 'srrip', 'brrip')
-# policies = ('lru', 'bip', 'rr', 'srrip', 'brrip')
 
-# policies = ["srrip_m_" + str(n) for n in range (1,17)]
 
-# policies = ["bip" + str(n) for n in range (2,64,2)]
-# victims = ["v" + str(n) for n in range (0,15)]
-# cols = [p + "_" + v for p in policies for v in victims]
+patterns = [(str(c) + "_" + str(d) + "_" + str(l)) for c in range (1,7) for d in range (1,7) for l in range (1,7) if (d >= l)]
 
-# cols = ('lip', 'bip2', 'bip4', 'bip6', 'bip8', 'bip10', 'bip12', 'bip14', 'bip16', 'bip18', 'bip20', 'bip22', 'bip24', 'bip26', 'bip28', 'bip30', 'bip32', 'bip34', 'bip36', 'bip38', 'bip40', 'bip42', 'bip44', 'bip46', 'bip48', 'bip50', 'bip52', 'bip54', 'bip56', 'bip58', 'bip60', 'bip62', 'lru')
-
-# cols = policies
-
-# rows = [(str(c) + "_" + str(d) + "_" + str(l)) for c in range (0,7) for d in range (0,7) for l in range (0,7) if (d >= l)]
-# rows = [(str(c) + "_" + str(d) + "_" + str(l)) for c in range (1,7) for d in range (1,7) for l in range (1,7) if (d >= l)]
 # rows = [("a_" + str(c) + "_1_1" + str(n) + "_b_" + str(c2) + "_1_1" + str(n2)) for c in range (1,7) for c2 in range (1,7) for n in range (1,23) for n2 in range (1,23) if ((c != c2) and (n != n2))]
 
-repetitions = [1,2]
+# repetitions = [1,2]
 
-rows = [("a_" + str(c) + "_1_1_" + str(n)) for c in range (1,4) for n in range (1,23)]
-cols = [("b_" + str(c) + "_1_1_" + str(n) + "_" + str(rep)) for rep in repetitions for c in range (1,4) for n in range (1,23)]
+# rows = [("a_" + str(c) + "_1_1_" + str(n)) for c in range (1,4) for n in range (1,23)]
+# cols = [("b_" + str(c) + "_1_1_" + str(n) + "_" + str(rep)) for rep in repetitions for c in range (1,4) for n in range (1,23)]
 
+rows = policies
+cols = range(6,30)
+
+directory = "/home/paloma.pedregal/memory-model/adaptive/count/"
+filesToPlot = "congruent_adaptive_eviction_test_100it_"
+saveDirectory = "/home/paloma.pedregal/memory-model/adaptive/figures/extra_patterns/congruent_eviction_strategies_"
 
 for pol in policies:
     elem = 0
-    rowsDataMisses = []
     rowsDataEviction = []
-    for r in rows:
-        rowElemMisses = []
-        rowElemEviction = []
-        for c in cols:
-            fileToOpen = r + "_" + c
-            openDir = directory + filesToPlot + pol + "_count_" + fileToOpen
+    for c in cols:
+        i = numCongruent(c)
+        for pat in patterns:
+            openDir = directory + filesToPlot + pol + "_count_" + pat
             if (os.path.exists(openDir)):
                 with open (openDir + "_hits") as f:
                     rowElemMisses.append (([float('%.3f'%(num_accesses_long(fileToOpen) - (float(x)))) for x in f.read().splitlines()][elem]))
