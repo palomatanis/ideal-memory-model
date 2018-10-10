@@ -13,6 +13,12 @@ initialSet m v = do
   let r = map (\x -> (x, AddressIdentifier 0)) l
   return $ CacheSetContent r
 
+-- initialSet :: Int -> Int -> IO(CacheSetContent)
+-- initialSet m v = do
+--   let l = (replicate (associativity-1) 3) ++ [0]
+--   let r = map (\x -> (x, AddressIdentifier 0)) l
+--   return $ CacheSetContent r
+  
 -- -- m = 3 -- For SSRIP  
 -- initialSet :: Int -> Int -> CacheSetContent
 -- initialSet m v = CacheSetContent(take associativity $ repeat (randomRIO(0, 2^m-1), AddressIdentifier 0))
