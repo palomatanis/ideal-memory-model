@@ -59,7 +59,7 @@ eviction_strategies = map (\(c, n) -> ([(c,1,1,n,1)],1)) $ [ (c,n) | c <- [cfrom
 --   where es = [ (c, 1, 1, n, 1) | c <- [cfrom..cto], n <- [numberCongAddresses_From..numberCongAddresses_To] ]
 
 --policies = [(lru, "lru"), (plru, "plru"), (plru, "rplru"),(plru, "plrur"), (bip, "bip"), (lip, "lip"), (fifo, "fifo"), (mru, "mru"), (rr, "rr"), (srrip, "srrip"), (brrip, "brrip")]
-policies = [(plru, "plrur")]
+policies = [(srrip, "srrip_fp")]
 
 -- policies = [(lru, "lru"), (bip, "bip"), (lip, "lip"), (rr, "rr"), (srrip, "srrip_fp"), (brrip, "brrip_fp"), (mru, "mru"), (fifo, "fifo")]
 

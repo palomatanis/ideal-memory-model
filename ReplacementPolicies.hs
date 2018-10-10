@@ -206,7 +206,7 @@ type AdaptiveRepPol = SetAddresses -> IO(CacheSetContent, HitNumber)
  -- Static re-reference interval prediction
 
 -- Hit promotion policy = hp hit priority or fp frequency priority
-hp = True -- if hp is False, then fp
+hp = False -- if hp is False, then fp
 
 srrip :: RepPol
 srrip set trace m = do
@@ -233,7 +233,7 @@ srrip set trace m = do
         where h = head trace
 
         
-mbrrip = 3 :: Int
+mbrrip = 2 :: Int
 -- Bimodal RRIP - puts new blocks with a distant rrpv (2^m-1) most of the time, but sometimes in long rrpv (2^m-2)
 brrip :: RepPol
 brrip set trace bip_probability = do
