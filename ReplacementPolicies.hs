@@ -206,7 +206,7 @@ type AdaptiveRepPol = SetAddresses -> IO(CacheSetContent, HitNumber)
  -- Static re-reference interval prediction
 
 -- Hit promotion policy = hp hit priority or fp frequency priority
-hp = True -- if hp is False, then fp
+hp = False -- if hp is False, then fp
 
 srrip :: RepPol
 srrip set trace m = do

@@ -35,36 +35,37 @@ rangeTests :: Int
 rangeTests = 2 * associativity
 
 iterations :: Int
-iterations = 1000
+iterations = 5000
+-- iterations = 1000
 -- iterations = 5000
 
---   -- Eviction strategies
--- -- Range of values to test of C
--- cfrom = 1
--- cto = 4
--- -- Range of values to test of D
--- dfrom = 1
--- dto = 6
--- -- Range of values to test of L
--- lfrom = 1
--- lto = 6
-
--- Eviction strategies
+  -- Eviction strategies
 -- Range of values to test of C
 cfrom = 1
-cto = 2
+cto = 4
 -- Range of values to test of D
-dfrom = 3
-dto = 4
+dfrom = 1
+dto = 6
 -- Range of values to test of L
 lfrom = 1
-lto = 3
+lto = 6
+
+-- -- Eviction strategies
+-- -- Range of values to test of C
+-- cfrom = 1
+-- cto = 2
+-- -- Range of values to test of D
+-- dfrom = 3
+-- dto = 4
+-- -- Range of values to test of L
+-- lfrom = 1
+-- lto = 3
 
 -- eviction_strategies = filter (\(a, b, c) -> (b >= c) && ((a == 0) || (b == 0) ||(c == 0))) $ [ (x,y,z) | x<-[cfrom..cto], y<-[dfrom..dto], z<-[lfrom..lto] ]
 
--- eviction_strategies = map (\(c, n) -> ([(c,1,1,n,1)],1)) $ [ (c,n) | c <- [cfrom..cto],  n <- [numberCongAddresses_From..numberCongAddresses_To] ]
+eviction_strategies = map (\(c, n) -> ([(c,1,1,n,1)],1)) $ [ (c,n) | c <- [cfrom..cto],  n <- [numberCongAddresses_From..numberCongAddresses_To] ]
 
-eviction_strategies = map (\(c, d, l, n) -> ([(c,d,l,n,1)],1)) $ filter (\(c, d, l, n) -> l < d) $[ (c,d,l,n) | c <- [cfrom..cto],  d <- [dfrom..dto], l <- [lfrom..lto],  n <- [numberCongAddresses_From..numberCongAddresses_To] ]
+-- eviction_strategies = map (\(c, d, l, n) -> ([(c,d,l,n,1)],1)) $ filter (\(c, d, l, n) -> l < d) $[ (c,d,l,n) | c <- [cfrom..cto],  d <- [dfrom..dto], l <- [lfrom..lto],  n <- [numberCongAddresses_From..numberCongAddresses_To] ]
 
 -- eviction_strategies = filter (\([(c1,_,_,n1,_),(c2,_,_,n2,_)], _) -> (c1 == c2) || (n1 == n2)) [ ([a,b], 1) | a <- es, b <- es ]
 --   where es = [ (c, 1, 1, n, 1) | c <- [cfrom..cto], n <- [numberCongAddresses_From..numberCongAddresses_To] ]
@@ -76,7 +77,7 @@ eviction_strategies = map (\(c, d, l, n) -> ([(c,d,l,n,1)],1)) $ filter (\(c, d,
 
 -- policies = [(lru, "lru"), (bip, "bip"), (lip, "lip"), (rr, "rr"), (srrip, "srrip_fp"), (brrip, "brrip_fp"), (mru, "mru"), (fifo, "fifo")]
 -- policies = [(srrip, "srrip_hp"), (brrip, "brrip_hp")]
-policies = [(plru, "rplru")]
+policies = [(srrip, "srrip_fp")]
 
 victim_position = [0]
 --victim_position = [0..associativity-1]
@@ -84,21 +85,21 @@ victim_position = [0]
 m_srrip = [2]
 
 
-main = do
-  mapM executeV m_srrip
-  where
-    executeV d = do
-       mapM (\v -> mapM (execute d v) policies) victim_position
-    execute d v (pol, name) = do
-          mapM (\ev@([(c,d,l,n,_)], _) -> executeTestCongruentExtra ("./adaptive/assoc8/congruent_deep_eviction_groups_" ++ (show iterations) ++ "it_" ++ name ++"_pattern_" ++ (show c) ++ "_rep_" ++ (show d) ++ "_groupsize_" ++(show l) ++ "_step_" ++ (show n) ++ "_congruent_addresses") pol ev d) eviction_strategies
-
 -- main = do
 --   mapM executeV m_srrip
 --   where
 --     executeV d = do
 --        mapM (\v -> mapM (execute d v) policies) victim_position
 --     execute d v (pol, name) = do
---           mapM (\ev@([(c,d,l,n,_)], _) -> executeTestCongruentExtra ("./adaptive/assoc8/congruent_deep_eviction_" ++ (show iterations) ++ "it_" ++ name ++"_pattern_" ++ (show c) ++ "_rep_" ++ (show n) ++ "_congruent_addresses") pol ev d) eviction_strategies
+--           mapM (\ev@([(c,d,l,n,_)], _) -> executeTestCongruentExtra ("./adaptive/assoc8/congruent_deep_eviction_groups_" ++ (show iterations) ++ "it_" ++ name ++"_pattern_" ++ (show c) ++ "_rep_" ++ (show d) ++ "_groupsize_" ++(show l) ++ "_step_" ++ (show n) ++ "_congruent_addresses") pol ev d) eviction_strategies
+
+main = do
+  mapM executeV m_srrip
+  where
+    executeV d = do
+      mapM (\v -> mapM (execute d v) policies) victim_position
+    execute dd v (pol, name) = do
+      mapM (\ev@([(c,d,l,n,_)], _) -> executeTestCongruentExtra ("./adaptive/assoc8/congruent_deep_eviction_" ++ (show iterations) ++ "it_" ++ name ++"_pattern_" ++ (show c) ++ "_rep_" ++ (show n) ++ "_congruent_addresses") pol ev dd) eviction_strategies
 
 
 congruence = True
@@ -227,8 +228,8 @@ create_fresh_state p1 p2 victim init = do
 -- Creates set of addresses, and a random victim, checks if the set is an eviction set for the victim
 test_adaptive_eviction_congruent_extra :: RepPol ->  EvictionStrategyExtra -> Int -> IO((Int, CacheState))
 test_adaptive_eviction_congruent_extra pol1 es d = do
-  init <- initialSetRPLRU
-  -- init <- initialSet d d
+  -- init <- initialSetRPLRU
+  init <- initialSet d d
   fresh_cache_state <- create_fresh_state pol1 pol1 init 512
   trace <- generate_trace es  
   (ev,cs) <- evicts_adapt_count_extra trace fresh_cache_state d
