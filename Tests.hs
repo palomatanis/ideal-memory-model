@@ -248,7 +248,7 @@ generate_trace e = do
       let set = congruent_long_address_set s n
       (SetAddresses tr) <- eviction_strategy_trace set (c,d,l)
       let trace = concat $ replicate repL tr
-      rr <- generate_trace' (es, repG) (trace ++ lis) (n+s)
+      rr <- generate_trace' (es, repG) (lis ++ trace) (n+s)
       return rr
       
 -- Creates set of addresses, and a random victim, checks if the set is an eviction set for the victim
