@@ -22,35 +22,45 @@ numberAddrToTest_To = 4000
 
   
 numberCongAddresses_From :: Int
-numberCongAddresses_From = 1
+numberCongAddresses_From = 4
 -- at least 'dto'addresses
 
 numberCongAddresses_To :: Int
-numberCongAddresses_To = 16
+numberCongAddresses_To = 22
 
 
 rangeTests :: Int
 rangeTests = 2 * associativity
 
 iterations :: Int
-iterations = 100
+iterations = 1000
+
+-- -- Eviction strategies
+-- -- Range of values to test of C
+-- cfrom = 1
+-- cto = 4
+-- -- Range of values to test of D
+-- dfrom = 1
+-- dto = 6
+-- -- Range of values to test of L
+-- lfrom = 1
+-- lto = 6
 
 -- Eviction strategies
 -- Range of values to test of C
 cfrom = 1
-cto = 4
-
+cto = 2
 -- Range of values to test of D
-dfrom = 1
-dto = 6
+dfrom = 3
+dto = 4
 -- Range of values to test of L
 lfrom = 1
-lto = 6
-
+lto = 3
 
 -- eviction_strategies = filter (\(a, b, c) -> (b >= c) && ((a == 0) || (b == 0) ||(c == 0))) $ [ (x,y,z) | x<-[cfrom..cto], y<-[dfrom..dto], z<-[lfrom..lto] ]
 
-eviction_strategies = map (\(c, n) -> ([(c,1,1,n,1)],1)) $ [ (c,n) | c <- [cfrom..cto],  n <- [numberCongAddresses_From..numberCongAddresses_To] ]
+-- eviction_strategies = map (\(c, n) -> ([(c,1,1,n,1)],1)) $ [ (c,n) | c <- [cfrom..cto],  n <- [numberCongAddresses_From..numberCongAddresses_To] ]
+eviction_strategies = map (\(c, d, l, n) -> ([(c,d,l,n,1)],1)) $ filter (\(c, d, l, n) -> l < d) $[ (c,d,l,n) | c <- [cfrom..cto],  d <- [dfrom..dto], l <- [lfrom..lto],  n <- [numberCongAddresses_From..numberCongAddresses_To] ]
 
 -- eviction_strategies = filter (\([(c1,_,_,n1,_),(c2,_,_,n2,_)], _) -> (c1 == c2) || (n1 == n2)) [ ([a,b], 1) | a <- es, b <- es ]
 --   where es = [ (c, 1, 1, n, 1) | c <- [cfrom..cto], n <- [numberCongAddresses_From..numberCongAddresses_To] ]
@@ -59,9 +69,9 @@ eviction_strategies = map (\(c, n) -> ([(c,1,1,n,1)],1)) $ [ (c,n) | c <- [cfrom
 --   where es = [ (c, 1, 1, n, 1) | c <- [cfrom..cto], n <- [numberCongAddresses_From..numberCongAddresses_To] ]
 
 --policies = [(lru, "lru"), (plru, "plru"), (plru, "rplru"),(plru, "plrur"), (bip, "bip"), (lip, "lip"), (fifo, "fifo"), (mru, "mru"), (rr, "rr"), (srrip, "srrip"), (brrip, "brrip")]
-policies = [(brrip, "brrip_hp"), (srrip, "srrip_hp")]
+-- policies = [(srrip, "srrip_fp"), (brrip, "brrip_fp")]
 
--- policies = [(lru, "lru"), (bip, "bip"), (lip, "lip"), (rr, "rr"), (srrip, "srrip_fp"), (brrip, "brrip_fp"), (mru, "mru"), (fifo, "fifo")]
+policies = [(lru, "lru"), (bip, "bip"), (lip, "lip"), (rr, "rr"), (srrip, "srrip_fp"), (brrip, "brrip_fp"), (mru, "mru"), (fifo, "fifo")]
 
 
 victim_position = [0]
@@ -76,7 +86,7 @@ main = do
     executeV d = do
        mapM (\v -> mapM (execute d v) policies) victim_position
     execute d v (pol, name) = do
-          mapM (\ev@([(c,_,_,n,_)], _) -> executeTestCongruentExtra ("./adaptive/assoc8/congruent_deep_eviction_" ++ (show iterations) ++ "it_" ++ name ++"_pattern_" ++ (show c) ++ "_rep_" ++ (show n) ++ "_congruent_addresses") pol ev d) eviction_strategies
+          mapM (\ev@([(c,d,l,n,_)], _) -> executeTestCongruentExtra ("./adaptive/assoc8/congruent_deep_eviction_groups_" ++ (show iterations) ++ "it_" ++ name ++"_pattern_" ++ (show c) ++ "_rep_" ++ (show d) ++ "_groupsize_" ++(show l) ++ "_step_" ++ (show n) ++ "_congruent_addresses") pol ev d) eviction_strategies
 
 congruence = True
 -- rangeAddresses = [numberAddrToTest_From, (numberAddrToTest_From + rangeTests)..numberAddrToTest_To]

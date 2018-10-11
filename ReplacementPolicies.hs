@@ -206,7 +206,7 @@ type AdaptiveRepPol = SetAddresses -> IO(CacheSetContent, HitNumber)
  -- Static re-reference interval prediction
 
 -- Hit promotion policy = hp hit priority or fp frequency priority
-hp = True -- if hp is False, then fp
+hp = False -- if hp is False, then fp
 
 srrip :: RepPol
 srrip set trace m = do
@@ -230,7 +230,11 @@ srrip set trace m = do
               Nothing -> do
                 let new_cache_st = map (\(a,b) -> (a+1,b)) set
                 srrip'(Trace trace, CacheSetContent(new_cache_st), Hit hit) m
-        where h = head trace
+        where
+          h = head trace
+          (AddressIdentifier adh) = h
+
+showSet s = map (\(i, AddressIdentifier a) -> (i,a)) s      
 
         
 mbrrip = 2 :: Int
