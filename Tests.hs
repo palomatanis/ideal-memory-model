@@ -257,8 +257,7 @@ test_assoc pol number = do
   let r = (SetState(16, 100)) 
   e <- evicts r pol
   return (bool_to_int e)
-
-
+  
 -- Aux
 
 -- Mean of a list
