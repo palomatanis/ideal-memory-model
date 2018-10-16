@@ -5,10 +5,13 @@ import Data.List
 import Data.Char
 import Control.Monad
 
-prints = False
-save = True
+prints = True
+save = False
 
 take_pattern = 20
+
+length_trace = 10
+
 
 path = "./adaptive/srrip_initial/srrip_hp_tests_initial_states_traces_"
 
@@ -19,7 +22,7 @@ printToFileLn path_end text = do
 
 patterns = map (\(c, d, l, n, r) -> ([(c,d,l,n,r)],1)) $ [ (c,d,l,n,r) | c <- [1,2,3], d <- [1, 3, 4], l <- [1,3], n <- [4], r <- [1,2], (l < d || l == 1) ]
 
-traces = rmdups $ map trans $ replicateM 8 ['a', 'b', 'c', 'd']
+traces = rmdups $ map trans $ replicateM length_trace ['a', 'b', 'c', 'd']
   where
     trans tra = map (\x -> if (x == nubbed !! 0) then 'a' else if (x == nubbed !! 1) then 'b' else if (x == nubbed !!2) then 'c' else 'd') tra
       where nubbed = nub tra
@@ -42,7 +45,6 @@ test_all_trace policy hh m assoc trace = do
   r <- mapM (\x -> test_trace file_name policy hh m x trace) initial_states
   let (h,m,ev) = unzip3 r
   let total = length $ filter (== assoc) ev
-  putStrLn $ show total
   when (total == 256) $ do
     writeFile (path ++ file_name) ""
     let pr = (show total) ++ " " ++ (show $ if (m == []) then 0 else maximum m) ++ "\n\ \"
