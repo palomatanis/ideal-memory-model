@@ -1,35 +1,107 @@
 import System.Environment
+import System.Random
 import Data.Random
 import Data.List
 import Data.Char
+import Control.Monad
 
-test_trace policy hh m ll t = do
-  let l = map (\x -> (x, '?')) ll
-  let set = CacheSetContent $ l
-  putStrLn $ "\n\ \Trace: " ++ (show t) ++  " \n\ \ "
-  putStrLn $ "Initial Cache Set: " ++ (show l) ++ " \n\ \ "
-  (CacheSetContent csc, Hit h, Hit m) <- policy (if (hh == "hp") then True else False) set (Trace t) m
-  let evicted = (length l) - (length $ filter (\(a,b) -> b == '?') csc)
-  putStrLn $ (show h) ++ " hits, " ++ (show m) ++ " misses, " ++ (show evicted) ++ " evicted  \n\ \ "
+prints = False
+save = True
 
-test_pattern policy hh m ll (a,b,c,d) = do
+take_pattern = 20
+
+path = "./adaptive/srrip_initial/srrip_hp_tests_initial_states_traces_"
+
+printToFileLn :: String -> String -> IO()
+printToFileLn path_end text = do
+  appendFile (path ++ path_end) text
+
+
+patterns = map (\(c, d, l, n, r) -> ([(c,d,l,n,r)],1)) $ [ (c,d,l,n,r) | c <- [1,2,3], d <- [1, 3, 4], l <- [1,3], n <- [4], r <- [1,2], (l < d || l == 1) ]
+
+traces = rmdups $ map trans $ replicateM 8 ['a', 'b', 'c', 'd']
+  where
+    trans tra = map (\x -> if (x == nubbed !! 0) then 'a' else if (x == nubbed !! 1) then 'b' else if (x == nubbed !!2) then 'c' else 'd') tra
+      where nubbed = nub tra
+-- rmdups $ map (first -> a...) $ replicateM 4 ['a', 'b']
+rmdups = map head . group . sort
+
+
+test_of_tests_pattern policy hh m assoc = do
+  mapM (\x -> test_all_pattern policy hh m assoc x) patterns
+
+test_of_tests_traces policy hh m assoc = do
+  mapM (\x -> test_all_trace policy hh m assoc x) traces
+  
+cr_name ([(c,d,l,n,r)], r2) = "_" ++ (show c) ++ "_" ++ (show d) ++ "_" ++ (show l) ++ "_" ++ (show n) ++ "_" ++ (show r)
+
+test_all_trace policy hh m assoc trace = do
+  let file_name = show trace
+  -- when save $ printToFileLn $ "\n\ \Trace: " ++ (show trace) ++  " \n\ \ "
+  let initial_states = allCombinations assoc m
+  r <- mapM (\x -> test_trace file_name policy hh m x trace) initial_states
+  let (h,m,ev) = unzip3 r
+  let total = length $ filter (== assoc) ev
+  putStrLn $ show total
+  when (total == 256) $ do
+    writeFile (path ++ file_name) ""
+    let pr = (show total) ++ " " ++ (show $ if (m == []) then 0 else maximum m) ++ "\n\ \"
+--   let pr = "\n\ \Totally evicted " ++ (show $ length $ filter (== assoc) ev) ++ " out of " ++ (show $ length r) ++ ", max misses = " ++ (show $ maximum m) ++ "\n\ \"
+    when save $ printToFileLn file_name pr
+    
+
+test_all_pattern policy hh m assoc trace = do
+  let file_name = cr_name trace
+  writeFile (path ++ file_name) ""
+  let initial_states = allCombinations assoc m
+  r <- mapM (\x -> test_pattern_long file_name policy hh m x trace) initial_states
+  let (h,m,ev) = unzip3 r
+  let pr = (show $ length $ filter (== assoc) ev) ++ " " ++ (show $ maximum m) ++ "\n\ \"
+--  let pr = "\n\ \Totally evicted " ++ (show $ length $ filter (== assoc) ev) ++ " out of " ++ (show $ length r) ++ ", max misses = " ++ (show $ maximum m) ++ "\n\ \"
+  when save $ printToFileLn file_name pr
+  
+allCombinations :: Int -> Int -> [[Int]]
+allCombinations assoc m = replicateM assoc [0..(2^m-1)]
+  
+test_trace fn policy hh m ll t = do
+  (l, as) <- do
+    case ll of
+      [a] -> do
+        la <- initialSet m a
+        return $ (CacheSetContent $ la, a)
+      _ -> do
+        let la = map (\x -> (x, '?')) ll
+        return $ (CacheSetContent $ la, length ll)
+  when prints $ putStrLn $ "\n\ \Trace: " ++ (show t) ++  " \n\ \ "
+  -- when save $ printToFileLn $ "\n\ \Trace: " ++ (show trace) ++  " \n\ \ "
+  when prints $ putStrLn $ "Initial Cache Set: " ++ (show l) ++ " \n\ \ "
+  -- when save $ printToFileLn $ "\n\ \Initial Cache Set: " ++ (show l) ++ " \n\ \ " 
+  (CacheSetContent csc, Hit h, Hit m) <- policy (if (hh == "hp") then True else False) l (Trace t) m
+  let evicted = as - (length $ filter (\(a,b) -> b == '?') csc)
+  when prints $ putStrLn $ (show h) ++ " hits, " ++ (show m) ++ " misses, " ++ (show evicted) ++ " evicted  \n\ \ "
+  -- when save $ printToFileLn fn $ (show h) ++ " " ++ (show m) ++ " " ++ (show evicted) ++ "\n\ \ "
+--   when save $ printToFileLn fn $ (show h) ++ " hits, " ++ (show m) ++ " misses, " ++ (show evicted) ++ " evicted  \n\ \ "
+  return (h,m,evicted)
+
+test_pattern fp policy hh m ll (a,b,c,d) = do
   let t = ([(a,b,c,d,1)],1)
-  r <- test_pattern_long policy hh m ll t
+  r <- test_pattern_long fp policy hh m ll t
   return r
   
-test_pattern_long policy hh m ll p = do
+test_pattern_long fn policy hh m ll p = do
   let t = generate_trace p
-  r <- test_trace policy hh m ll t
+  r <- test_trace fn policy hh m ll t 
   return r
-
+  
 generate_trace :: EvictionStrategyExtra -> [Char]
 generate_trace e = generate_trace' e [] 1
   where
     generate_trace' :: EvictionStrategyExtra -> [Char] -> Int -> [Char]
-    generate_trace' ([], rep) lis _ = concat $ replicate rep lis
+--    generate_trace' ([], rep) lis _ = concat $ replicate rep lis
+    generate_trace' ([], rep) lis _ = take take_pattern $ cycle $ concat $ replicate rep lis
     generate_trace' (((c,d,l,s,repL):es), repG) lis n = generate_trace' (es, repG) (lis ++ trace) (n+s)
       where
-        alphabet = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+        alphabet = cycle "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
         set = map (\x -> alphabet !! (x - 1))([n..(n+s-1)])
         tr = eviction_strategy_trace set (c,d,l)
         trace = concat $ replicate repL tr
@@ -73,7 +145,7 @@ rrip isbrrip hp set trace mbrrip = do
           Just elem -> do
             let (reg, el) = set !! elem
             let new_cache_st = take elem set ++ [((if hp then 0 else (if reg > 0 then reg-1 else 0)), el)] ++ drop (elem + 1) set
-            putStrLn $ (show h) ++ " -> Hit: " ++ (show new_cache_st) ++ " \n\ \ "
+            if prints then putStrLn $ (show h) ++ " -> Hit: " ++ (show new_cache_st) ++ " \n\ \ " else return()
             rrip'(Trace (tail trace), CacheSetContent(new_cache_st), Hit $ hit + 1, Hit misses) mbrrip hp isbrrip
           Nothing ->
             case (elemIndex (2^mbrrip-1) $ map (\(a,b) -> a) set) of
@@ -84,19 +156,20 @@ rrip isbrrip hp set trace mbrrip = do
                 let new_cache_st = if b
                       then (take elem set ++ [(2^mbrrip-2, h)] ++ drop (elem + 1) set)
                       else (take elem set ++ [(2^mbrrip-1, h)] ++ drop (elem + 1) set)
-                putStrLn $ (show h) ++" -> Miss, introduce: " ++ (show new_cache_st) ++ " \n\ \ "
+                if prints then putStrLn $ (show h) ++" -> Miss, introduce: " ++ (show new_cache_st) ++ " \n\ \ " else return()
                 rrip'(Trace $ tail trace, CacheSetContent new_cache_st, Hit hit, Hit $ misses + 1) mbrrip hp isbrrip
               Nothing -> do
                 let new_cache_st = map (\(a,b) -> (a+1,b)) set
-                putStrLn $ "Miss, increase: " ++ (show new_cache_st) ++ " \n\ \ "
+                if prints then putStrLn $ "Miss, increase: " ++ (show new_cache_st) ++ " \n\ \ " else return()
                 rrip'(Trace trace, CacheSetContent new_cache_st, Hit hit, Hit misses) mbrrip hp isbrrip
-        where h = head trace      
+        where h = head trace
 
--- initialSetPLRU :: IO(CacheSetContent)
--- initialSetPLRU = do
---   l <- replicateM associativity $ randomRIO(0, 1)
---   let r = map (\x -> (x, AddressIdentifier 0)) l
---   return $ CacheSetContent r
+initialSet :: Int -> Int -> IO([(Int, Char)])
+initialSet m associativity = do
+  l <- replicateM associativity $ randomRIO(0, 2^m-1)
+  let r = map (\x -> (x, '?')) l
+  return r
+
 
 -- List of congruent addresses that are going to be inserted to a cache
 newtype Trace = Trace String
